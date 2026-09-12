@@ -26,9 +26,13 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import threading
 import time
+import urllib.request
 import webbrowser
+import zipfile
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -38,6 +42,18 @@ HERE = Path(__file__).resolve().parent
 REPO = HERE.parent
 SHEET = REPO / "wizard" / "index.html"
 BUNDLE_SRC = REPO / BUNDLE_ID
+HELPER_FILE = Path(__file__).resolve()
+HELPER_NEW = HELPER_FILE.parent / (HELPER_FILE.name + ".new")
+
+GITHUB_REPO = "Ripley-Dynamics/PrusaSlicer-3.0-Calibration-Suite"
+GITHUB_BRANCH = "main"
+ZIP_URL = f"https://codeload.github.com/{GITHUB_REPO}/zip/refs/heads/{GITHUB_BRANCH}"
+COMMITS_URL = f"https://api.github.com/repos/{GITHUB_REPO}/commits/{GITHUB_BRANCH}"
+USER_AGENT = "dialin-helper"
+COPY_IGNORE = shutil.ignore_patterns("*.pyc", ".DS_Store", "__pycache__")
+KEEP_FILE = "profile.lua"          # never overwritten by an install or an update
+STAMP_FILE = "INSTALLED.json"      # written into the installed bundle by an update
+REFRESHED = ["wizard/index.html", "README.md"]   # refreshed in this checkout too
 
 
 # ---------------------------------------------------------------- locations
@@ -151,6 +167,65 @@ def detect_prusaslicer():
     return None
 
 
+# ---------------------------------------------------------------- github
+def http_get(url, timeout=60, accept="*/*"):
+    """GET a URL with urllib, which honours the environment's proxy settings."""
+    req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT, "Accept": accept})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+
+def latest_commit():
+    """sha, date and subject of the branch head. Unauthenticated and
+    rate-limited, so a failure here only costs the decoration."""
+    blank = {"commit": None, "commit_date": None, "commit_message": None}
+    try:
+        j = json.loads(http_get(COMMITS_URL, timeout=20, accept="application/vnd.github+json").decode("utf-8", "replace"))
+        commit = j.get("commit") or {}
+        message = (commit.get("message") or "").splitlines()
+        return {"commit": j.get("sha") or None,
+                "commit_date": (commit.get("committer") or {}).get("date"),
+                "commit_message": message[0] if message else None}
+    except Exception:
+        return blank
+
+
+def read_bytes(path):
+    try:
+        return Path(path).read_bytes()
+    except Exception:
+        return None
+
+
+def dir_files(folder, skip=()):
+    folder = Path(folder)
+    return {p.relative_to(folder).as_posix(): p
+            for p in folder.rglob("*") if p.is_file() and p.name not in skip}
+
+
+def dirs_differ(a, b, skip=()):
+    """True when the two folders hold a different set of files, or different
+    bytes in any of them (skip names that belong to the installed copy)."""
+    fa, fb = dir_files(a, skip), dir_files(b, skip)
+    if set(fa) != set(fb):
+        return True
+    return any(fa[k].read_bytes() != fb[k].read_bytes() for k in fa)
+
+
+def copy_bundle(src, dst):
+    """Replace the bundle folder dst with src, keeping dst's profile.lua.
+    Returns True when a profile.lua was carried over."""
+    src, dst = Path(src), Path(dst)
+    keep = read_bytes(dst / KEEP_FILE) if (dst / KEEP_FILE).exists() else None
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst, ignore=COPY_IGNORE)
+    if keep is not None:
+        (dst / KEEP_FILE).write_bytes(keep)
+    return keep is not None
+
+
 # ---------------------------------------------------------------- state
 class Helper:
     def __init__(self, args):
@@ -164,12 +239,22 @@ class Helper:
         self.clients = []
         self.lock = threading.Lock()
         self.seq = 0
-        save_config({"plugins_dir": str(self.plugins_dir) if str(self.plugins_dir) else "", "prusaslicer": self.prusaslicer or ""})
+        self._helper_outdated = False
+        save_config({"plugins_dir": str(self.plugins_dir) if self.plugins_dir_set() else "", "prusaslicer": self.prusaslicer or ""})
 
     # -- bundle
+    def plugins_dir_set(self):
+        """Whether a plugins folder is known. Path("") is PosixPath("."), so an
+        unset folder is not simply falsy."""
+        return str(self.plugins_dir) not in ("", ".")
+
+    def require_plugins_dir(self):
+        if not self.plugins_dir_set():
+            raise RuntimeError("No PrusaSlicer user data folder found. Start PrusaSlicer 3.0 once, or pass --plugins-dir.")
+
     @property
     def bundle_dst(self):
-        return self.plugins_dir / BUNDLE_ID if str(self.plugins_dir) else None
+        return self.plugins_dir / BUNDLE_ID if self.plugins_dir_set() else None
 
     def manifest_version(self, folder):
         try:
@@ -177,17 +262,38 @@ class Helper:
         except Exception:
             return None
 
+    def installed_stamp(self):
+        """INSTALLED.json from the installed bundle, written by an update."""
+        dst = self.bundle_dst
+        try:
+            return json.loads((dst / STAMP_FILE).read_text())
+        except Exception:
+            return {}
+
+    def helper_outdated(self):
+        """True when an update found a newer helper program than the one that is
+        running, and the replacement is still waiting as dialin_helper.py.new."""
+        if not HELPER_NEW.exists():
+            return self._helper_outdated
+        new = read_bytes(HELPER_NEW)
+        return new is not None and new != read_bytes(HELPER_FILE)
+
     def status(self):
         dst = self.bundle_dst
+        stamp = self.installed_stamp()
+        commit = stamp.get("commit") or None
         return {
             "helper": True,
             "version": 1,
             "platform": platform.system(),
             "repo": str(REPO),
-            "plugins_dir": str(self.plugins_dir) if str(self.plugins_dir) else None,
-            "plugins_dir_exists": bool(str(self.plugins_dir)) and self.plugins_dir.parent.is_dir(),
+            "plugins_dir": str(self.plugins_dir) if self.plugins_dir_set() else None,
+            "plugins_dir_exists": self.plugins_dir_set() and self.plugins_dir.parent.is_dir(),
             "bundle_source_version": self.manifest_version(BUNDLE_SRC),
             "bundle_installed_version": self.manifest_version(dst) if dst else None,
+            "bundle_installed_commit": commit[:7] if isinstance(commit, str) else None,
+            "bundle_installed_at": stamp.get("installed_at"),
+            "helper_outdated": self.helper_outdated(),
             "profile_exists": bool(dst) and (dst / "profile.lua").exists(),
             "prusaslicer": self.prusaslicer,
             "prusaslicer_exists": bool(self.prusaslicer) and Path(self.prusaslicer).exists(),
@@ -196,23 +302,120 @@ class Helper:
             "events": len(self.events),
         }
 
-    def install(self):
-        if not str(self.plugins_dir):
-            raise RuntimeError("No PrusaSlicer user data folder found. Start PrusaSlicer 3.0 once, or pass --plugins-dir.")
-        if not BUNDLE_SRC.is_dir():
-            raise RuntimeError(f"Bundle source missing: {BUNDLE_SRC}")
+    def _install_from(self, src_dir):
+        """Put src_dir into the plugins folder as the installed bundle, keeping
+        the profile.lua already there. Shared by install() and the GitHub path."""
+        self.require_plugins_dir()
+        src_dir = Path(src_dir)
+        if not src_dir.is_dir():
+            raise RuntimeError(f"Bundle source missing: {src_dir}")
         dst = self.bundle_dst
         self.plugins_dir.mkdir(parents=True, exist_ok=True)
-        keep = None
-        if (dst / "profile.lua").exists():
-            keep = (dst / "profile.lua").read_text()
-        if dst.exists():
-            shutil.rmtree(dst)
-        shutil.copytree(BUNDLE_SRC, dst, ignore=shutil.ignore_patterns("*.pyc", ".DS_Store", "__pycache__"))
-        if keep is not None:
-            (dst / "profile.lua").write_text(keep)
+        kept = copy_bundle(src_dir, dst)
+        return dst, kept
+
+    def install(self):
+        dst, _ = self._install_from(BUNDLE_SRC)
         self.emit("helper", f"installed bundle {self.manifest_version(dst)} into {dst}")
         return str(dst)
+
+    def update_from_github(self):
+        """Download the branch zip from GitHub, install the bundle out of it and
+        refresh this checkout (bundle, sheet, README) so the served sheet matches
+        what is installed. The running helper program is never replaced."""
+        self.require_plugins_dir()
+        was = self.installed_stamp().get("commit")
+        tmp = Path(tempfile.mkdtemp(prefix="dialin-update-"))
+        try:
+            zip_path = tmp / "main.zip"
+            zip_path.write_bytes(http_get(ZIP_URL, timeout=60))
+            src = tmp / "src"
+            with zipfile.ZipFile(zip_path) as zf:
+                names = [n for n in zf.namelist() if n.strip("/")]
+                tops = sorted({n.split("/")[0] for n in names})
+                if len(tops) != 1:
+                    raise RuntimeError(f"unexpected zip from {ZIP_URL}: top-level entries {tops}")
+                top = tops[0]
+                if f"{top}/{BUNDLE_ID}/manifest.json" not in names:
+                    raise RuntimeError(f"the zip from {ZIP_URL} has no {top}/{BUNDLE_ID}/manifest.json "
+                                       f"-- wrong branch, or the bundle folder moved in the repo")
+                wanted = [f"{top}/helper/{HELPER_FILE.name}"] + [f"{top}/{r}" for r in REFRESHED]
+                members = [n for n in names if not n.endswith("/")
+                           and (n.startswith(f"{top}/{BUNDLE_ID}/") or n in wanted)]
+                zf.extractall(src, members=members)
+            new_bundle = src / top / BUNDLE_ID
+            version = self.manifest_version(new_bundle)
+
+            dst, kept = self._install_from(new_bundle)
+
+            changed, checkout_error = [], None
+            try:
+                if not BUNDLE_SRC.is_dir() or dirs_differ(new_bundle, BUNDLE_SRC, skip=(KEEP_FILE, STAMP_FILE)):
+                    changed.append(BUNDLE_ID)
+                copy_bundle(new_bundle, BUNDLE_SRC)
+                for rel in REFRESHED:
+                    got = src / top / rel
+                    if not got.is_file():
+                        continue
+                    if read_bytes(got) != read_bytes(REPO / rel):
+                        (REPO / rel).parent.mkdir(parents=True, exist_ok=True)
+                        (REPO / rel).write_bytes(got.read_bytes())
+                        changed.append(rel)
+            except Exception as e:
+                checkout_error = f"could not refresh {REPO}: {e}"
+
+            # The running program cannot replace itself: leave the new one beside it.
+            new_helper = src / top / "helper" / HELPER_FILE.name
+            outdated = new_helper.is_file() and read_bytes(new_helper) != read_bytes(HELPER_FILE)
+            if outdated:
+                try:
+                    HELPER_NEW.write_bytes(new_helper.read_bytes())
+                except Exception as e:
+                    checkout_error = checkout_error or f"could not write {HELPER_NEW}: {e}"
+            self._helper_outdated = bool(outdated)
+
+            head = latest_commit()
+            short = (head["commit"] or "")[:7] or None
+            day = (head["commit_date"] or "")[:10] or None
+            installed_at = datetime.now(timezone.utc).replace(microsecond=0).isoformat()
+            stamp = {"source": ZIP_URL, "commit": head["commit"], "commit_date": head["commit_date"],
+                     "installed_at": installed_at, "version": version}
+            (dst / STAMP_FILE).write_text(json.dumps(stamp, indent=2))
+
+            same = bool(head["commit"] and was and head["commit"] == was)
+            line = (f"loaded latest plugin: v{version or '?'}, commit {short or 'unknown'}"
+                    f"{f' ({day})' if day else ''} into {dst}")
+            if same:
+                line += f"; already at commit {short}, reinstalled"
+            if kept:
+                line += "; kept profile.lua"
+            self.emit("helper", line)
+            if outdated:
+                self.emit("helper", f"the download's helper program differs from the running one: wrote it beside "
+                                    f"this one as {HELPER_NEW.name} -- close the helper, replace {HELPER_FILE.name} "
+                                    f"with it and start it again")
+            if checkout_error:
+                self.emit("warning", checkout_error)
+            return {
+                "source": ZIP_URL,
+                "version": version,
+                "commit": head["commit"],
+                "commit_short": short,
+                "commit_date": head["commit_date"],
+                "commit_message": head["commit_message"],
+                "installed_to": str(dst),
+                "installed_at": installed_at,
+                "profile_kept": bool(kept),
+                "same_commit": same,
+                "files_changed": changed,
+                "changed": bool(changed),
+                "helper_outdated": bool(outdated),
+                "helper_new_path": str(HELPER_NEW) if outdated else None,
+                "checkout_error": checkout_error,
+                "line": line,
+            }
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     def write_profile(self, lua):
         if not lua.strip().startswith("--") and not lua.strip().startswith("return"):
@@ -381,6 +584,8 @@ class Handler(BaseHTTPRequestHandler):
         try:
             if self.path == "/api/install":
                 self._json({"ok": True, "path": h.install(), "status": h.status()})
+            elif self.path == "/api/update":
+                self._json({"ok": True, "result": h.update_from_github(), "status": h.status()})
             elif self.path == "/api/profile":
                 self._json({"ok": True, "path": h.write_profile(self._body().get("lua", "")), "status": h.status()})
             elif self.path == "/api/launch":
@@ -416,9 +621,18 @@ def main():
     ap.add_argument("--prusaslicer", help="PrusaSlicer executable, or the folder of a portable zip")
     ap.add_argument("--no-browser", action="store_true")
     ap.add_argument("--launch", action="store_true", help="launch PrusaSlicer immediately")
+    ap.add_argument("--update", action="store_true",
+                    help="fetch the latest plugin from GitHub, install it and exit")
     args = ap.parse_args()
 
     Handler.helper = Helper(args)
+    if args.update:
+        try:
+            print(json.dumps(Handler.helper.update_from_github(), indent=2))
+        except Exception as e:
+            print("update failed:", e)
+            sys.exit(1)
+        return
     server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
     url = f"http://127.0.0.1:{args.port}/"
     st = Handler.helper.status()

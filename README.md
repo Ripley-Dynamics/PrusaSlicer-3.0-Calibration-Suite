@@ -296,9 +296,20 @@ python3 helper/dialin_helper.py
 It opens the sheet at `http://127.0.0.1:8765/` and adds a status bar and a
 log drawer to it:
 
-- **Install / Update bundle** copies the plugin into PrusaSlicer's user
+- **Install from this checkout** copies the plugin into PrusaSlicer's user
   plugins folder (detected from the PrusaSlicer-alpha, -beta or release data
   folder; override with `--plugins-dir`). An existing `profile.lua` is kept.
+- **Load latest plugin** needs no git: it downloads the current `main` branch
+  of this repository as a zip, installs the bundle out of it (keeping your
+  `profile.lua`), and refreshes this checkout's copy of the bundle, the sheet
+  and this README so what you see matches what is installed. The installed
+  commit is recorded in `INSTALLED.json` in the bundle and shown in the status
+  bar (`bundle v0.2.0 · 06fb57c`). The same thing from the command line:
+  `python3 helper/dialin_helper.py --update`, which installs and exits.
+  The helper script cannot replace itself while it is running, so if the
+  download contains a newer `dialin_helper.py` it is written beside it as
+  `helper/dialin_helper.py.new` and the sheet asks you to close the helper,
+  swap the file and start it again.
 - **Save profile.lua** writes the sheet's profile straight into the bundle.
 - **Launch PrusaSlicer** starts it as a child process and streams its
   output into the log drawer. The path is detected (installed builds, and
