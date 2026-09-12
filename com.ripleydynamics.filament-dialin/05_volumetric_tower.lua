@@ -4,11 +4,7 @@ info = {
     title = "Max volumetric flow: Prusa's single-wall comb, or a solid block",
     menu = "Filament Dial-In/5. Max volumetric flow",
     params = {
-        { name = "min_flow", label = "Lowest flow [mm3/s] (bottom)", type = "int", default = 6 },
-        { name = "max_flow", label = "Highest flow [mm3/s] (top)", type = "int", default = 24 },
-        { name = "by_interval", label = "Choose by interval (on) or by number of sections (off)", type = "bool", default = false },
-        { name = "interval", label = "Interval [mm3/s]", type = "int", default = 3 },
-        { name = "sections", label = "Number of sections (when interval is off)", type = "int", default = 7 },
+        { name = "range", label = "Range [mm3/s], first value at the bottom: 6 to 24 x7, or 6 to 24 step 3", type = "string", default = "6 to 24 x7" },
         { name = "section_height", label = "Section height [mm]", type = "int", default = 6 },
         { name = "comb", label = "Prusa single-wall comb (on) or solid 30 x 16 block (off)", type = "bool", default = true },
         { name = "extrusion_width", label = "Extrusion width [mm] (blank = comb: nozzle x 1.75, block: nozzle x 1.125)", type = "string", default = "" },
@@ -31,12 +27,12 @@ function execute(opts)
     local label = require("lib/label")
     local tower = require("lib/tower")
 
-    local flows = util.range {
-        min = opts.min_flow, max = opts.max_flow, by_interval = opts.by_interval,
-        interval = opts.interval, count = opts.sections, max_count = 20,
-    }
+    local flows = util.parse_range(opts.range, { max_count = 20, what = "Flow range" })
     local n = #flows
-    assert(flows[1] > 0, "Flow must be positive")
+    assert(n >= 2, "A volumetric tower needs at least two sections")
+    for _, f in ipairs(flows) do
+        assert(f > 0, "Flow must be positive")
+    end
     local section_req = util.num(opts.section_height, "section height", 6)
     assert(section_req >= 3, "Section height must be at least 3 mm")
 
@@ -122,6 +118,6 @@ function execute(opts)
     for i = 1, n do
         util.log(string.format("  band %d: %s mm3/s -> %s mm/s", i, util.fmt(flows[i], 2), util.fmt(speeds[i], 1)))
     end
-    util.data(bed, "vol", { tag = tag, values = util.join(flows, 2), sections = n, comb = opts.comb and true or false,
-        extrusion_width = ew, area = util.extrusion_area(ew, lh), section_height = section_h })
+    util.data(bed, "vol", { tag = tag, range = tostring(opts.range), values = util.join(flows, 2), sections = n,
+        comb = opts.comb and true or false, extrusion_width = ew, area = util.extrusion_area(ew, lh), section_height = section_h })
 end

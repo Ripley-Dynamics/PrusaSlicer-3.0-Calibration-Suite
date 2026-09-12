@@ -2,13 +2,9 @@ info = {
     id = "pa_line",
     type = "project.plugin",
     title = "Pressure advance line test (OrcaSlicer PA Line), recommended",
-    menu = "Filament Dial-In/4. Pressure advance line (recommended)",
+    menu = "Filament Dial-In/4. Pressure advance/Line test (recommended)",
     params = {
-        { name = "min_pa", label = "Lowest pressure advance (bottom line), e.g. 0.00", type = "string", default = "0.00" },
-        { name = "max_pa", label = "Highest pressure advance (top line), e.g. 0.08", type = "string", default = "0.08" },
-        { name = "by_interval", label = "Choose by interval (on) or by number of lines (off)", type = "bool", default = true },
-        { name = "interval", label = "Interval, e.g. 0.005", type = "string", default = "0.005" },
-        { name = "sections", label = "Number of lines (when interval is off)", type = "int", default = 9 },
+        { name = "range", label = "Range, first value on the first line: 0.00 to 0.08 step 0.005, or 0.00 to 0.08 x9", type = "string", default = "0.00 to 0.08 step 0.005" },
         { name = "slow_speed", label = "Slow segment speed [mm/s]", type = "int", default = 20 },
         { name = "fast_speed", label = "Fast segment speed [mm/s]", type = "int", default = 100 },
         { name = "spacing", label = "Line spacing [mm]", type = "int", default = 5 },
@@ -71,12 +67,12 @@ function execute(opts)
     local firmware = tostring(opts.firmware or "prusa"):lower():gsub("%s", "")
     local template = COMMANDS[firmware]
     assert(template, "Firmware must be one of prusa, marlin, klipper, reprap")
-    local values = util.range {
-        min = util.decimal(opts.min_pa, "lowest pressure advance"), max = util.decimal(opts.max_pa, "highest pressure advance"),
-        by_interval = opts.by_interval, interval = util.decimal(opts.interval, "interval"), count = opts.sections, max_count = 30,
-    }
+    local values = util.parse_range(opts.range, { max_count = 30, what = "Pressure advance range" })
     local n = #values
-    assert(values[1] >= 0 and values[n] <= 2, "Pressure advance must be between 0 and 2")
+    assert(n >= 2, "A pressure advance line test needs at least two lines")
+    for _, pa in ipairs(values) do
+        assert(pa >= 0 and pa <= 2, "Pressure advance must be between 0 and 2")
+    end
     local slow = util.num(opts.slow_speed, "slow speed", 20)
     local fast = util.num(opts.fast_speed, "fast speed", 100)
     local spacing = util.num(opts.spacing, "spacing", 5)
@@ -159,6 +155,6 @@ function execute(opts)
         util.fmt(SHORT + LONG + SHORT + 4 + 5 * (DIGIT_W + DIGIT_GAP)), util.fmt((n - 1) * spacing)))
     util.log("pick the line whose fast middle run is as wide as its slow ends: thin start = too little PA, fat end blob = too much; the value is written beside each line")
     util.log("requires relative extrusion (M83) in the printer profile; check the pattern position in the G-code preview before printing")
-    util.data(bed, "pa", { method = "line", tag = tag, values = util.join(values, 3), sections = n, slow = slow, fast = fast,
-        bed_x = cx, bed_y = cy, firmware = firmware, line_width = width })
+    util.data(bed, "pa", { method = "line", tag = tag, range = tostring(opts.range), values = util.join(values, 3), sections = n,
+        slow = slow, fast = fast, bed_x = cx, bed_y = cy, firmware = firmware, line_width = width })
 end

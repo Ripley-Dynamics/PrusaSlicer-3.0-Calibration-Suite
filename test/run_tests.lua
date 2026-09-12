@@ -247,10 +247,10 @@ test("every file evaluates without api/require (discovery scan)", function()
     for _, m in ipairs(modules) do
         check(m.ok, m.path .. " failed at discovery: " .. tostring(m.err))
     end
-    check(#commands == 16, "expected 16 commands, found " .. #commands)
+    check(#commands == 17, "expected 17 commands, found " .. #commands)
 end)
 
-test("command metadata is valid for alpha11 and the menu reads 1..9 in filename order", function()
+test("command metadata is valid for alpha11 and the menu reads 0..13 in filename order", function()
     local seen_ids, seen_menus = {}, {}
     local types = { string = "string", int = "number", float = "number", bool = "boolean" }
     local numbered = {}
@@ -276,14 +276,24 @@ test("command metadata is valid for alpha11 and the menu reads 1..9 in filename 
             check(type(p.label) == "string", f .. ": label missing for " .. p.name)
             check(p.type ~= "float", f .. ": avoid float params (alpha11 rounds them); use int or string")
         end
-        local num = info.menu:match("/(%d+)%. ")
-        if num then numbered[#numbered + 1] = tonumber(num)
-        elseif info.menu:match("/%d+b%. ") then -- alternative method, sorts right after its step
-        else check(info.menu:find("/Tools/", 1, true), f .. ": unnumbered command must be under Tools") end
+        -- "Filament Dial-In/4. Pressure advance/Line test" is step 4; a whole
+        -- submenu of entries under one numbered step counts as that step once.
+        local prefix, num = info.menu:match("^(.-/(%d+)%.[^/]*)")
+        if num then
+            num = tonumber(num)
+            local last = numbered[#numbered]
+            if last and last.num == num then
+                check(last.prefix == prefix, f .. ": step " .. num .. " appears under two different submenus")
+            else
+                numbered[#numbered + 1] = { num = num, prefix = prefix, file = f }
+            end
+        else
+            check(info.menu:find("/Tools/", 1, true), f .. ": unnumbered command must be under Tools")
+        end
     end
     -- `commands` is sorted by filename, which is the order PrusaSlicer shows
-    for i, n in ipairs(numbered) do check(n == i, "menu number " .. n .. " appears at position " .. i) end
-    check(#numbered == 13, "thirteen numbered steps")
+    for i, e in ipairs(numbered) do check(e.num == i - 1, "menu number " .. e.num .. " appears at position " .. i .. " (" .. e.file .. ")") end
+    check(#numbered == 14, "fourteen numbered steps, 0 to 13")
 end)
 
 print("Library")
@@ -320,6 +330,46 @@ test("util helpers", function()
     check(b.baseline_mismatch == nil, "no mismatch without a profile")
 end)
 
+test("util.parse_range", function()
+    local mock = Mock.new()
+    local env = exec_env(mock, bundle_dir .. "/x.lua")
+    local util = env.require("lib/util")
+    local function r(text, o)
+        local values = util.parse_range(text, o)
+        return util.join(values, 4)
+    end
+    local whole = { integer = true }
+    check(r("260 to 235 step 5", whole) == "260,255,250,245,240,235", "A to B step S keeps the typed direction")
+    check(r("235 to 260 step 5", whole) == "235,240,245,250,255,260", "typed the other way round it ascends")
+    check(r("260-235 step 5", whole) == "260,255,250,245,240,235", "A-B step S")
+    check(r("260..235 step 5", whole) == "260,255,250,245,240,235", "A..B step S")
+    check(r("260 to 235 x6", whole) == "260,255,250,245,240,235", "A to B x N")
+    check(r("260 to 235 in 6", whole) == "260,255,250,245,240,235", "A to B in N")
+    check(r("260 to 235 / 6", whole) == "260,255,250,245,240,235", "A to B / N")
+    check(r("  0 TO 100   STEP  20 ", whole) == "0,20,40,60,80,100", "case-insensitive, flexible whitespace")
+    check(r("-5 to +5 step 1", whole) == "-5,-4,-3,-2,-1,0,1,2,3,4,5", "negative and explicitly positive values")
+    check(r("0,5 to 1,5 step 0,5") == "0.5,1,1.5", "comma decimal separator")
+    local decimals = util.parse_range("0.00 to 0.08 step 0.005", { max_count = 30 })
+    check(#decimals == 17 and near(decimals[1], 0) and near(decimals[2], 0.005) and near(decimals[17], 0.08), "decimals")
+    local pct, pct_spec = util.parse_range("10% to 35% step 5%")
+    check(util.join(pct, 2) == "10,15,20,25,30,35" and pct_spec.percent == true, "percentages strip the sign and set percent")
+    check(select(2, util.parse_range("10 to 35 step 5")).percent == false, "no percent sign, no percent flag")
+    local one, one_spec = util.parse_range("250", whole)
+    check(#one == 1 and one[1] == 250 and one_spec.count == 1 and one_spec.by_interval == false and one_spec.lo == 250, "a single number is one value")
+    check(select(1, util.parse_range("-3.5"))[1] == -3.5, "a single negative decimal")
+    local _, spec = util.parse_range("260 to 235 step 5", whole)
+    check(spec.lo == 260 and spec.hi == 235 and spec.by_interval == true and near(spec.interval, 5) and spec.count == 6, "spec from the interval form")
+    local _, cspec = util.parse_range("6 to 24 x7")
+    check(cspec.by_interval == false and near(cspec.interval, 3) and cspec.count == 7, "spec from the count form carries the effective interval")
+    local ok1, err1 = pcall(util.parse_range, "260 235 step 5")
+    check(not ok1 and tostring(err1):find("Accepted forms", 1, true), "malformed (no separator) names the accepted forms: " .. tostring(err1))
+    local ok2, err2 = pcall(util.parse_range, "260 to 235 step")
+    check(not ok2 and tostring(err2):find("Accepted forms", 1, true), "malformed (no step value) names the accepted forms: " .. tostring(err2))
+    check(not pcall(util.parse_range, "", { what = "Range" }), "blank rejected")
+    check(not pcall(util.parse_range, "0 to 100 step 1", { max_count = 20 }), "max_count still applies")
+    check(not pcall(util.parse_range, "10 to 35 x1"), "a count of one is still rejected")
+end)
+
 test("label placement conventions", function()
     local mock = Mock.new()
     local env = exec_env(mock, bundle_dir .. "/x.lua")
@@ -347,6 +397,64 @@ test("tower builder", function()
 end)
 
 print("Commands")
+test("0 nozzle clean before testing", function()
+    local mock = run_command(cmd("nozzle_clean"))
+    local obj = generic_checks(mock)
+    check(obj.mesh.dims.max_x == 20 and obj.mesh.dims.max_y == 20 and near(obj.mesh.dims.max_z, 1), "20 x 20 x 1 mm anchor plate")
+    check(obj.object_params.fill_density == "100%", "solid plate")
+    check(#mock.bed.gcodes == 1 and near(mock.bed.gcodes[1].z, 0.1), "one entry on the plate's first layer")
+    local lines = {}
+    for l in mock.bed.gcodes[1].gcode:gmatch("[^\n]+") do lines[#lines + 1] = l end
+    local at, purges, messages = {}, 0, 0
+    for i, l in ipairs(lines) do
+        local function mark(key)
+            at[key] = at[key] or {}
+            at[key][#at[key] + 1] = i
+        end
+        if l:match("^M600") then mark("change") end
+        if l:match("^M601") then mark("pause") end
+        if l:match("^M109 R100") then mark("cool") end
+        if l:match("^M109 S270") then mark("hot") end
+        if l:match("^M109 S250") then mark("reload") end
+        if l:match("^G1 E20 F150") then purges = purges + 1 end
+        if l:match("^M117 ") then messages = messages + 1 end
+    end
+    check(at.change and #at.change == 2, "M600 twice: cleaning filament in, test filament back")
+    check(at.pause and #at.pause == 1, "exactly one pause (M601 on Prusa)")
+    check(at.hot and at.hot[1] < at.change[1], "heats to the purge temperature before the first filament change")
+    check(at.cool and at.cool[1] < at.pause[1] and at.pause[1] < at.change[2], "the pause sits between the cooldown and the second filament change")
+    check(at.reload and #at.reload == 1 and at.reload[1] > at.pause[1], "reload temperature 250 comes from the material preset, after the pull")
+    check(purges == 7, "100 mm in five 20 mm chunks plus two for the 40 mm reload purge, got " .. purges)
+    check(messages == 6, "six M117 messages: start, insert cleaner, cooling, pull, load test filament, purging; got " .. messages)
+    for _, l in ipairs(lines) do check(l:find(";", 1, true), "every line carries a comment: " .. l) end
+    check(lines[#lines]:find("nozzle clean done", 1, true), "ends with the done comment")
+    local d = parse_data(data_line(mock))
+    check(d.step == "clean" and d.clean_temp == 270 and d.pull_temp == 100 and d.reload_temp == 250 and d.purge_mm == 100 and d.firmware == "prusa", "DATA")
+    local note = false
+    for _, l in ipairs(mock.prints) do if l:find("Cold Pull", 1, true) then note = true end end
+    check(note, "logs the CORE One Control > Cold Pull note")
+    -- firmware variants
+    local klipper = run_command(cmd("nozzle_clean"), { firmware = "klipper" }).bed.gcodes[1].gcode
+    check(klipper:find("TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=100", 1, true) and klipper:find("PAUSE ; pause", 1, true)
+        and not klipper:find("M109 R", 1, true), "klipper waits for cooling and pauses with PAUSE")
+    local marlin = run_command(cmd("nozzle_clean"), { firmware = "marlin" }).bed.gcodes[1].gcode
+    check(marlin:find("M0 Pull the filament out firmly, then resume ;", 1, true) and marlin:find("M109 R100", 1, true), "marlin pauses with M0 plus the message")
+    local reprap = run_command(cmd("nozzle_clean"), { firmware = "reprap" }).bed.gcodes[1].gcode
+    check(reprap:find("M226 ; pause", 1, true), "reprap pauses with M226")
+    -- purge chunking
+    local short_purge = run_command(cmd("nozzle_clean"), { purge_mm = 50 }).bed.gcodes[1].gcode
+    local chunks, tail = 0, false
+    for l in short_purge:gmatch("[^\n]+") do
+        if l:match("^G1 E20 F150") then chunks = chunks + 1 end
+        if l:match("^G1 E10 F150") then tail = true end
+    end
+    check(chunks == 4 and tail, "50 mm purges as 20 + 20 + 10, plus two 20 mm reload chunks: " .. chunks)
+    must_fail(cmd("nozzle_clean"), { clean_temp = 320 }, "between 150 and 300")
+    must_fail(cmd("nozzle_clean"), { pull_temp = 40 }, "between 60 and 160")
+    must_fail(cmd("nozzle_clean"), { purge_mm = 5 }, "between 20 and 300")
+    must_fail(cmd("nozzle_clean"), { firmware = "duet" }, "Firmware must be")
+end)
+
 test("1 temperature tower on Prusa's model", function()
     local mock = run_command(cmd("temp_tower"))
     local obj = generic_checks(mock)
@@ -366,12 +474,16 @@ test("1 temperature tower on Prusa's model", function()
     check(obj.object_params.fill_density == "100%", "solid")
     local d = parse_data(data_line(mock))
     check(d.values == "260,255,250,245,240,235" and d.sections == 6 and near(d.section_height, 10), "DATA values")
-    local mock2 = run_command(cmd("temp_tower"), { by_interval = false, sections = 4, solid = false })
-    check(gcode_lines(mock2)[2] == "M104 S252" and #gcode_lines(mock2) == 4, "by sections: " .. table.concat(gcode_lines(mock2), " "))
+    check(d.range == "260 to 235 step 5", "DATA carries the typed range: " .. tostring(d.range))
+    local mock2 = run_command(cmd("temp_tower"), { range = "260 to 235 x4", solid = false })
+    check(gcode_lines(mock2)[2] == "M104 S252" and #gcode_lines(mock2) == 4, "by count: " .. table.concat(gcode_lines(mock2), " "))
     check(single_object(mock2).object_params == nil, "preset infill kept")
-    must_fail(cmd("temp_tower"), { max_temp = 400, min_temp = 380 }, "out of range")
-    must_fail(cmd("temp_tower"), { max_temp = 230 }, "greater than")
-    must_fail(cmd("temp_tower"), { interval = 1 }, "Too many")
+    local mock3 = run_command(cmd("temp_tower"), { range = "235 to 260 step 5" })
+    check(gcode_lines(mock3)[1] == "M104 S235" and gcode_lines(mock3)[6] == "M104 S260", "typed the other way round it climbs")
+    must_fail(cmd("temp_tower"), { range = "400 to 380 step 5" }, "out of range")
+    must_fail(cmd("temp_tower"), { range = "235 to 235 step 5" }, "greater than")
+    must_fail(cmd("temp_tower"), { range = "260 to 235 step 1" }, "Too many")
+    must_fail(cmd("temp_tower"), { range = "260 235" }, "Accepted forms")
 end)
 
 test("2 cooling tower", function()
@@ -394,30 +506,46 @@ test("2 cooling tower", function()
     for _, l in ipairs(mock.prints) do if l:find("dynamic fan speeds", 1, true) then warned = true end end
     check(warned, "warns about dynamic fan speeds being on")
     check(parse_data(data_line(mock)).values == "0,20,40,60,80,100", "DATA")
-    local mock2 = run_command(cmd("cooling_tower"), { own_fan = false, overhang_angle = 0, by_interval = false, sections = 3, min_fan = 30, max_fan = 50 })
+    check(parse_data(data_line(mock)).range == "0 to 100 step 20", "DATA carries the typed range")
+    local mock2 = run_command(cmd("cooling_tower"), { own_fan = false, overhang_angle = 0, range = "30 to 50 x3" })
     check(#mock2.bed.material.set_log == 0, "presets untouched when own_fan is off")
     check(#volumes_of(single_object(mock2), VT.Solid, "cube") == 1 and #mock2.bed.gcodes == 3 * 40 and mock2.bed.gcodes[41].gcode == "M106 S102", "three bands 30/40/50, no wings")
-    must_fail(cmd("cooling_tower"), { max_fan = 120 }, "Fan out of range")
+    must_fail(cmd("cooling_tower"), { range = "0 to 120 step 20" }, "Fan out of range")
 end)
 
-test("3 flow staircase", function()
+test("3 flow staircase, Orca-style relative labels", function()
     local mock = run_command(cmd("flow_tower"))
     local obj = generic_checks(mock)
-    check(obj.mesh.dims.max_x == 108 and obj.mesh.dims.max_y == 20 and near(obj.mesh.dims.max_z, 5), "bottom slab 108 x 20 x 5")
+    check(obj.mesh.dims.max_x == 110 and obj.mesh.dims.max_y == 16 and near(obj.mesh.dims.max_z, 4), "bottom slab 110 x 16 x 4 (11 treads of 10 mm)")
     local slabs = volumes_of(obj, VT.Solid, "cube")
-    check(#slabs == 8, "eight more slabs")
+    check(#slabs == 10, "ten more slabs")
     for i, sl in ipairs(slabs) do
-        check(near(sl.translate.x, i * 12) and near(sl.translate.z, i * 5) and near(sl.mesh.dims.max_x, 108 - i * 12), "slab " .. (i + 1) .. " forms a tread")
+        check(near(sl.translate.x, i * 10) and near(sl.translate.z, i * 4) and near(sl.mesh.dims.max_x, 110 - i * 10), "slab " .. (i + 1) .. " forms a tread")
     end
     local g = gcode_lines(mock)
-    check(#g == 9 and g[1] == "M221 S80" and g[5] == "M221 S100" and g[9] == "M221 S120", "pass-1 sweep: " .. table.concat(g, " "))
-    check(near(mock.bed.gcodes[1].z, 0.1) and near(mock.bed.gcodes[2].z, 5.1), "M221 on each step's first layer")
-    check(has_text(obj, "80%") and has_text(obj, "120%") and has_text(obj, "MK4S 0.4"), "labels")
+    check(#g == 11 and g[1] == "M221 S95" and g[6] == "M221 S100" and g[11] == "M221 S105", "Orca YOLO sweep, absolute M221: " .. table.concat(g, " "))
+    check(near(mock.bed.gcodes[1].z, 0.1) and near(mock.bed.gcodes[2].z, 4.1), "M221 on each step's first layer")
+    for _, t in ipairs({ "-5", "-1", "0", "+1", "+5" }) do check(has_text(obj, t), "relative label " .. t) end
+    check(not has_text(obj, "95") and not has_text(obj, "105"), "absolute percentages are not engraved")
+    check(has_text(obj, "MK4S 0.4"), "tag")
+    check(obj.object_params.top_fill_pattern == "archimedeanchords" and obj.object_params.fill_density == "100%", "solid, archimedean chords on top")
     local d = parse_data(data_line(mock))
-    check(d.values == "80,85,90,95,100,105,110,115,120" and near(d.extrusion_multiplier, 1), "DATA")
-    local mock2 = run_command(cmd("flow_tower"), { min_flow = 96, max_flow = 104, interval = 1 })
-    check(#gcode_lines(mock2) == 9 and gcode_lines(mock2)[1] == "M221 S96", "pass 2 in 1% steps")
-    must_fail(cmd("flow_tower"), { min_flow = 40 }, "out of range")
+    check(d.values == "95,96,97,98,99,100,101,102,103,104,105" and d.labels == "-5,-4,-3,-2,-1,0,+1,+2,+3,+4,+5", "DATA keeps absolute values and the labels")
+    check(d.relative == "true" and d.range == "-5 to +5 step 1" and d.top_pattern == "archimedeanchords" and near(d.extrusion_multiplier, 1), "DATA")
+    check(d.steps == 11 and near(d.tread, 10) and near(d.width, 16) and near(d.riser, 4), "DATA geometry")
+    -- the legacy two-pass method, and absolute percentages
+    local mock2 = run_command(cmd("flow_tower"), { range = "-20 to +20 step 5", top_pattern = "monotonic" })
+    local g2 = gcode_lines(mock2)
+    check(#g2 == 9 and g2[1] == "M221 S80" and g2[9] == "M221 S120", "pass 1 of the two-pass method: " .. table.concat(g2, " "))
+    check(has_text(single_object(mock2), "-20") and has_text(single_object(mock2), "+20"), "relative labels on pass 1")
+    check(single_object(mock2).object_params.top_fill_pattern == "monotonic", "Orca's legacy pattern")
+    local mock3 = run_command(cmd("flow_tower"), { range = "96 to 104 step 1" })
+    local d3 = parse_data(data_line(mock3))
+    check(#gcode_lines(mock3) == 9 and gcode_lines(mock3)[1] == "M221 S96" and d3.relative == "false", "absolute percentages taken as typed")
+    check(has_text(single_object(mock3), "-4") and has_text(single_object(mock3), "+4"), "absolute values still engraved relative")
+    must_fail(cmd("flow_tower"), { range = "-60 to +20 step 5" }, "out of range")
+    must_fail(cmd("flow_tower"), { range = "40 to 120 step 5" }, "out of range")
+    must_fail(cmd("flow_tower"), { top_pattern = "gyroid" }, "Top surface pattern")
 end)
 
 test("4 pressure advance line test", function()
@@ -443,8 +571,8 @@ test("4 pressure advance line test", function()
     check(lines[2] == "G90" and lines[3] == "G1 E0.8 F2400" and lines[#lines - 1] == "G1 E-0.8 F2400", "unretract first, retract last")
     check(not g:find("G92", 1, true) and not g:find("M83", 1, true), "never touches the E mode")
     local d = parse_data(data_line(mock))
-    check(d.step == "pa" and d.method == "line" and d.bed_x == 125 and d.bed_y == 105 and d.sections == 17, "DATA")
-    local mock2 = run_command(cmd("pa_line"), { firmware = "klipper", bed_x = 100, bed_y = 100, min_pa = "0.02", max_pa = "0.06", interval = "0.02", retract = "0" }, { printer_name = "Voron 2.4" })
+    check(d.step == "pa" and d.method == "line" and d.bed_x == 125 and d.bed_y == 105 and d.sections == 17 and d.range == "0.00 to 0.08 step 0.005", "DATA")
+    local mock2 = run_command(cmd("pa_line"), { firmware = "klipper", bed_x = 100, bed_y = 100, range = "0.02 to 0.06 step 0.02", retract = "0" }, { printer_name = "Voron 2.4" })
     local g2 = mock2.bed.gcodes[1].gcode
     check(g2:find("SET_PRESSURE_ADVANCE ADVANCE=0.04", 1, true) and g2:find("G0 X60 Y110 F9000", 1, true) and not g2:find("E0.8", 1, true), "klipper, explicit bed centre, no retract")
     must_fail(cmd("pa_line"), nil, "Bed centre unknown", { printer_name = "Voron 2.4" })
@@ -472,11 +600,12 @@ test("4b pressure advance tower", function()
     for _, v in ipairs({ "0.000", "0.050", "0.100", "MK4S 0.4" }) do check(has_text(obj, v), "label " .. v) end
     local d = parse_data(data_line(mock))
     check(d.step == "pa" and d.values == "0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1" and d.firmware == "prusa" and d.p_pressure_advance == 0, "DATA")
-    local mock2 = run_command(cmd("pa_tower"), { firmware = "klipper", by_interval = false, sections = 3, min_pa = "0.02", max_pa = "0.06" })
+    check(d.range == "0.00 to 0.10 step 0.01", "DATA carries the typed range")
+    local mock2 = run_command(cmd("pa_tower"), { firmware = "klipper", range = "0.02 to 0.06 x3" })
     check(table.concat(gcode_lines(mock2), " | ") == "SET_PRESSURE_ADVANCE ADVANCE=0.02 | SET_PRESSURE_ADVANCE ADVANCE=0.04 | SET_PRESSURE_ADVANCE ADVANCE=0.06", "klipper by sections: " .. table.concat(gcode_lines(mock2), " | "))
-    check(gcode_lines(run_command(cmd("pa_tower"), { firmware = "marlin", max_pa = "0.02" }))[3] == "M900 K0.02", "marlin")
+    check(gcode_lines(run_command(cmd("pa_tower"), { firmware = "marlin", range = "0.00 to 0.02 step 0.01" }))[3] == "M900 K0.02", "marlin")
     must_fail(cmd("pa_tower"), { firmware = "rrf" }, "Firmware must be")
-    must_fail(cmd("pa_tower"), { max_pa = "3", interval = "1" }, "between 0 and 2")
+    must_fail(cmd("pa_tower"), { range = "0 to 3 step 1" }, "between 0 and 2")
 end)
 
 test("5 max volumetric flow: Prusa comb", function()
@@ -503,7 +632,7 @@ test("5 max volumetric flow: Prusa comb", function()
     local warned = false
     for _, l in ipairs(mock.prints) do if l:find("WARNING: the filament preset caps", 1, true) then warned = true end end
     check(warned, "warns that the preset's 8 mm3/s cap is below the top band")
-    local mock2 = run_command(cmd("volumetric_tower"), { comb = false, lift_limits = true, by_interval = true, interval = 6 })
+    local mock2 = run_command(cmd("volumetric_tower"), { comb = false, lift_limits = true, range = "6 to 24 step 6" })
     local obj2 = single_object(mock2)
     check(obj2.mesh.kind == "cube" and obj2.mesh.dims.max_x == 30, "solid block variant")
     check(#volumes_of(obj2, VT.Modifier) == 4, "6,12,18,24 by interval")
@@ -534,14 +663,14 @@ test("7 infill overlap calibration", function()
     end
     check(has_text(obj, "infill_overlap") and has_text(obj, "MK4S 0.4"), "key and tag engraved")
     local d = parse_data(data_line(mock))
-    check(d.step == "overlap" and d.values == "10%,15%,20%,25%,30%,35%", "DATA")
-    local mock2 = run_command(cmd("overlap"), { by_interval = false, blocks = 4 })
+    check(d.step == "overlap" and d.values == "10%,15%,20%,25%,30%,35%" and d.range == "10% to 35% step 5%", "DATA")
+    local mock2 = run_command(cmd("overlap"), { range = "10% to 35% x4" })
     local m2 = volumes_of(single_object(mock2), VT.Modifier)
     check(#m2 == 4 and m2[2].params.infill_overlap == "18.33%", "by block count: " .. tostring(m2[2].params.infill_overlap))
-    local mock3 = run_command(cmd("overlap"), { setting = "perimeters", min_value = "2", max_value = "5", interval = "1" })
+    local mock3 = run_command(cmd("overlap"), { setting = "perimeters", range = "2 to 5 step 1" })
     local m3 = volumes_of(single_object(mock3), VT.Modifier)
     check(#m3 == 4 and m3[4].params.perimeters == 5 and math.type(m3[4].params.perimeters) == "integer", "integer setting")
-    must_fail(cmd("overlap"), { min_value = "abc" }, "must be a number")
+    must_fail(cmd("overlap"), { range = "abc" }, "Accepted forms")
     must_fail(cmd("overlap"), { setting = "bad key!" }, "config key")
 end)
 
@@ -609,9 +738,10 @@ test("12 stringing tower", function()
     check(#volumes_of(obj, VT.Solid, "cube") == 2, "two pillars")
     local mock2 = run_command(cmd("stringing_tower"), { fan_start = 30, fan_step = 10 })
     check(gcode_lines(mock2)[1] == "M104 S250\nM106 S77", "temperature and fan in one entry")
-    local mock3 = run_command(cmd("stringing_tower"), { interval = 0, sections = 4 })
-    check(#gcode_lines(mock3) == 4 and gcode_lines(mock3)[4] == "M104 S250", "constant temperature with 4 sections")
-    local mock4 = run_command(cmd("stringing_tower"), { by_interval = false, sections = 3 })
+    local mock3 = run_command(cmd("stringing_tower"), { range = "250", sections = 4 })
+    check(#gcode_lines(mock3) == 4 and gcode_lines(mock3)[4] == "M104 S250", "a single number means a constant temperature, sections from the count")
+    check(parse_data(data_line(mock3)).constant == "true", "DATA marks the constant-temperature run")
+    local mock4 = run_command(cmd("stringing_tower"), { range = "250 to 225 x3" })
     check(table.concat(gcode_lines(mock4), " ") == "M104 S250 M104 S238 M104 S225", "by sections: " .. table.concat(gcode_lines(mock4), " "))
     must_fail(cmd("stringing_tower"), { fan_start = 60, fan_step = 10 }, "fan is out of range")
 end)
@@ -636,7 +766,7 @@ test("tools: nozzle wipe", function()
 end)
 
 test("every command prints one DATA line with the baseline", function()
-    local expected_step = { temp_tower = "temp", cooling_tower = "cooling", flow_tower = "flow", pa_line = "pa", pa_tower = "pa", volumetric_tower = "vol", slab = "slab", overlap = "overlap",
+    local expected_step = { nozzle_clean = "clean", temp_tower = "temp", cooling_tower = "cooling", flow_tower = "flow", pa_line = "pa", pa_tower = "pa", volumetric_tower = "vol", slab = "slab", overlap = "overlap",
         hole_fit_gauge = "gauge", small_feature_tower = "small",
         shrink_bar = "bar", coupon = "coupon", stringing_tower = "string", apply_results = "apply" }
     for id, step in pairs(expected_step) do

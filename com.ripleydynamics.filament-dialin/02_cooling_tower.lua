@@ -4,11 +4,7 @@ info = {
     title = "Cooling tower: fan per band, overhang wings and a heat-soak pillar",
     menu = "Filament Dial-In/2. Cooling tower",
     params = {
-        { name = "min_fan", label = "Lowest fan [%] (bottom band)", type = "int", default = 0 },
-        { name = "max_fan", label = "Highest fan [%] (top band)", type = "int", default = 100 },
-        { name = "by_interval", label = "Choose by interval (on) or by number of bands (off)", type = "bool", default = true },
-        { name = "interval", label = "Interval [%]", type = "int", default = 20 },
-        { name = "sections", label = "Number of bands (when interval is off)", type = "int", default = 6 },
+        { name = "range", label = "Fan range [%], first value at the bottom: 0 to 100 step 20, or 0 to 100 x6", type = "string", default = "0 to 100 step 20" },
         { name = "section_height", label = "Band height [mm]", type = "int", default = 8 },
         { name = "size", label = "Tower size [mm]", type = "int", default = 20 },
         { name = "overhang_angle", label = "Overhang wing angle from horizontal [deg] (0 = none)", type = "int", default = 45 },
@@ -44,10 +40,10 @@ function execute(opts)
     local label = require("lib/label")
     local tower = require("lib/tower")
 
-    local fans = util.range { min = opts.min_fan, max = opts.max_fan, by_interval = opts.by_interval,
-        interval = opts.interval, count = opts.sections, integer = true, max_count = 20 }
+    local fans = util.parse_range(opts.range, { integer = true, max_count = 20, what = "Fan range" })
     for _, f in ipairs(fans) do assert(f >= 0 and f <= 100, "Fan out of range: " .. f) end
     local n = #fans
+    assert(n >= 2, "A cooling tower needs at least two bands")
     local size = util.num(opts.size, "tower size", 20)
     local section_req = util.num(opts.section_height, "band height", 8)
     local angle = util.num(opts.overhang_angle, "overhang angle", 45)
@@ -114,5 +110,6 @@ function execute(opts)
     util.log(string.format("cooling tower for %s: %d bands of %s mm, fan %d%% to %d%%, pillar %s mm away, wings at %s deg",
         tag, n, util.fmt(h), fans[1], fans[n], util.fmt(PILLAR_GAP), angle > 0 and util.fmt(angle, 0) or "none"))
     util.log("read the pillar first, bottom up: fused or bulging layers mean too little cooling; then the wings; take the lowest fan that is clean, PETG strength drops with more fan")
-    util.data(bed, "cooling", { tag = tag, values = util.join(fans, 0), sections = n, section_height = h, own_fan = opts.own_fan and true or false })
+    util.data(bed, "cooling", { tag = tag, range = tostring(opts.range), values = util.join(fans, 0), sections = n, section_height = h,
+        own_fan = opts.own_fan and true or false })
 end

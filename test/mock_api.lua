@@ -175,6 +175,8 @@ local function speed_defs()
         first_layer_height = { kind = "float_or_percent", value = 0.2 },
         fill_density = { kind = "percent", value = 15 },
         fill_pattern = { kind = "enum", value = "gyroid", allowed = { "rectilinear", "monotonic", "gyroid", "cubic", "grid" } },
+        top_fill_pattern = { kind = "enum", value = "monotonic", allowed = { "rectilinear", "monotonic", "monotoniclines",
+            "alignedrectilinear", "concentric", "hilbertcurve", "archimedeanchords", "octagramspiral" } },
         brim_type = { kind = "enum", value = "no_brim", allowed = { "no_brim", "outer_only", "inner_only", "outer_and_inner" } },
         brim_width = { kind = "double", value = 0 },
         perimeters = { kind = "int", value = 2 },

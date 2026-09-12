@@ -4,11 +4,7 @@ info = {
     title = "Temperature tower (Prusa calibration model, 100% infill)",
     menu = "Filament Dial-In/1. Temperature tower",
     params = {
-        { name = "max_temp", label = "Hottest section [C] (printed first, at the bottom)", type = "int", default = 260 },
-        { name = "min_temp", label = "Coolest section [C] (top)", type = "int", default = 235 },
-        { name = "by_interval", label = "Choose by interval (on) or by number of sections (off)", type = "bool", default = true },
-        { name = "interval", label = "Interval [C]", type = "int", default = 5 },
-        { name = "sections", label = "Number of sections (when interval is off)", type = "int", default = 6 },
+        { name = "range", label = "Range [C], first value at the bottom: 260 to 235 step 5, or 260 to 235 x6", type = "string", default = "260 to 235 step 5" },
         { name = "solid", label = "Print at 100% infill", type = "bool", default = true },
         { name = "tag", label = "Printer tag (blank = profile.lua or printer name)", type = "string", default = "" },
     },
@@ -25,16 +21,14 @@ function execute(opts)
     local label = require("lib/label")
     local tower = require("lib/tower")
 
-    local temps = util.range {
-        min = opts.min_temp, max = opts.max_temp, by_interval = opts.by_interval,
-        interval = opts.interval, count = opts.sections, integer = true, max_count = 20,
-    }
+    -- The typed order is the printed order, so "260 to 235" puts the hottest
+    -- band at the bottom; type it the other way round to climb.
+    local temps = util.parse_range(opts.range, { integer = true, max_count = 20, what = "Temperature range" })
     for _, t in ipairs(temps) do
         assert(t >= 150 and t <= 350, "Temperature out of range: " .. t)
     end
-    -- hottest at the bottom: descending order
-    table.sort(temps, function(a, b) return a > b end)
     local n = #temps
+    assert(n >= 2, "A temperature tower needs at least two bands")
 
     local bed = api.project:current_bed()
     local lh = util.layer_height(bed)
@@ -77,8 +71,9 @@ function execute(opts)
         object_params = opts.solid and util.solid_params() or nil,
     }
 
-    util.log(string.format("temperature tower for %s: %d bands of %s mm, %d C down to %d C, layer %s mm",
+    util.log(string.format("temperature tower for %s: %d bands of %s mm, %d C (bottom) to %d C (top), layer %s mm",
         tag, n, util.fmt(step_h), temps[1], temps[n], util.fmt(lh, 3)))
     util.log("the base prints at the preset temperature; each M104 lands on its band's first layer; bridges and overhangs are Prusa's calibration model")
-    util.data(bed, "temp", { tag = tag, values = util.join(temps, 0), sections = n, section_height = step_h, solid = opts.solid and true or false })
+    util.data(bed, "temp", { tag = tag, range = tostring(opts.range), values = util.join(temps, 0), sections = n, section_height = step_h,
+        solid = opts.solid and true or false })
 end
