@@ -40,116 +40,220 @@ body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);f
 button,input,select,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 a{color:var(--accent)}
-.app{display:grid;grid-template-columns:272px minmax(0,1fr);min-height:100vh}
-.rail{background:var(--rail);border-right:1px solid var(--line);padding:20px 16px 28px;display:flex;flex-direction:column;gap:22px}
-.brand{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:-.02em;line-height:1.05;text-transform:uppercase}
-.brand .model{color:var(--accent)}
-.brand small{display:block;font-family:var(--data);font-weight:600;font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);margin-top:8px}
-.eyebrow{font-family:var(--data);font-size:12px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
-.printer-list{display:flex;flex-direction:column;gap:4px}
-.printer-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:6px;padding:8px 12px;min-height:44px;cursor:pointer;transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
-.printer-btn:hover{background:var(--sheet)}
-.printer-btn[aria-current="true"]{background:var(--sheet);border-color:var(--line)}
-.printer-btn .tag{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
-.steps{display:flex;flex-direction:column;gap:2px}
-.step-btn{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:6px;padding:8px;min-height:40px;cursor:pointer;color:var(--ink-2);transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease)}
-.step-btn:hover{background:var(--sheet)}
-.step-btn[aria-current="true"]{background:var(--sheet);border-color:var(--line);color:var(--ink)}
-.step-btn .num{font-family:var(--display);font-weight:600;font-size:20px;line-height:1;color:var(--ink-3)}
-.step-btn[aria-current="true"] .num{color:var(--accent)}
-.dot{width:9px;height:9px;border-radius:50%;background:var(--line);flex:none}
-.dot.done{background:var(--good)}
-.dot.partial{background:var(--warn)}
-.rail-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
-.btn{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:13px;color:var(--ink);transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease)}
-.btn:hover{border-color:var(--ink-3);background:var(--paper)}
+/* ---- shell: 56px top bar, 232px rail, main ---- */
+.app{display:flex;flex-direction:column;min-height:100vh}
+.topbar{height:56px;flex:none;background:var(--sheet);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:24px;padding:0 20px}
+.wordmark{flex:1;min-width:0;font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:.01em;text-transform:uppercase;line-height:1;white-space:nowrap}
+.wordmark .a{color:var(--accent)}
+.topbar-mid{flex:none;min-width:0}
+/* the helper cluster is the only thing in the right slot; its popover must escape the bar */
+.topbar-right{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;gap:12px;overflow:visible}
+.select-wrap{position:relative;display:inline-flex;align-items:center}
+.select-wrap>svg{position:absolute;right:10px;pointer-events:none;color:var(--ink-3)}
+.dialin-select{height:32px;max-width:340px;padding:0 32px 0 12px;background:var(--paper);border:1px solid var(--line);border-radius:6px;font-size:14px;color:var(--ink);appearance:none;-webkit-appearance:none;cursor:pointer;text-overflow:ellipsis}
+.body{flex:1;min-height:0;display:flex}
+main{flex:1;min-width:0;padding:40px 48px 64px}
+main>*{max-width:960px}
+/* ---- rail ---- */
+.rail{width:232px;flex:none;background:var(--rail);border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;gap:14px}
+.eyebrow{font-family:var(--data);font-size:12px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px;line-height:1}
+.rail .eyebrow,.card .eyebrow,.dcard .eyebrow,.fsec .eyebrow{margin:0}
+.rlist{display:flex;flex-direction:column;gap:2px}
+.rrow{display:flex;align-items:center;gap:10px;width:100%;height:40px;padding:0 8px;text-align:left;background:transparent;border:1px solid transparent;border-radius:6px;cursor:pointer;font:inherit;font-size:14px;color:var(--ink-2)}
+.rrow:hover{background:var(--sheet)}
+.rrow[aria-current="true"]{background:var(--sheet);border-color:var(--line);color:var(--ink);font-weight:500}
+.rrow .n{flex:none;width:20px;font-family:var(--display);font-weight:600;font-size:18px;line-height:1;color:var(--ink-3)}
+.rrow[aria-current="true"] .n{color:var(--accent)}
+.rrow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow.tall{height:56px}
+.rrow .two{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.rrow .two b{font-weight:400;font-size:14px;line-height:1.2;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .two span{font-family:var(--mono);font-size:12px;line-height:1.2;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow.new{background:var(--sheet);border-color:var(--line);color:var(--ink);font-weight:500}
+.rrow.new svg{color:var(--accent);flex:none}
+.rrow.quiet{height:32px;color:var(--ink-3)}
+.rrow.quiet[aria-current="true"]{color:var(--ink)}
+.rrow.strong{color:var(--ink);font-weight:500}
+.rrow.strong svg{color:var(--ink-3);flex:none}
+.rrow .ok{color:var(--good);flex:none;display:flex}
+.rsep{height:1px;flex:none;background:var(--line)}
+.sdot{flex:none;width:9px;height:9px;border-radius:50%;box-sizing:border-box}
+.sdot.done{background:var(--good)}
+.sdot.partial{background:var(--warn)}
+.sdot.ready{border:1.5px solid var(--accent)}
+.sdot.blocked{border:1.5px solid var(--line)}
+/* ---- buttons ---- */
+.btn{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:8px 14px;cursor:pointer;font-weight:600;font-size:13px;color:var(--ink-2);display:inline-flex;align-items:center;gap:8px;transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease)}
+.btn:hover{border-color:var(--ink-3)}
 .btn:active{transform:scale(.98)}
 .btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .btn.primary:hover{background:var(--accent-hover);border-color:var(--accent-hover)}
 .btn.small{padding:4px 9px;font-size:12px}
-.btn.danger{color:var(--bad)}
-main{padding:28px 32px 64px;max-width:1040px;width:100%}
-.sheet-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:1px solid var(--line);padding-bottom:16px;margin-bottom:24px}
-.sheet-head h1{font-family:var(--display);font-weight:700;font-size:40px;line-height:1.05;letter-spacing:-.02em;margin:0;text-transform:uppercase;text-wrap:balance}
-.sheet-head h1 .n{color:var(--accent);margin-right:10px}
-.sheet-head .who{font-family:var(--mono);font-size:13px;color:var(--ink-2);text-align:right}
-.sheet-head .who b{color:var(--ink);font-weight:500}
-.purpose{max-width:66ch;color:var(--ink-2);margin:0 0 22px;font-size:15.5px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start}
-.block{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow-sm)}
-.block h2{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.01em;text-transform:none;margin:0 0 12px;display:flex;align-items:baseline;gap:10px}
-.block h2 .k{font-family:var(--data);font-size:12px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3)}
-.bed{background:var(--accent-soft);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13.5px;margin:0 0 12px}
-.cmd{font-family:var(--mono);font-size:13px;background:var(--paper);border:1px solid var(--line-soft);border-radius:6px;padding:8px 10px;margin:0 0 12px;word-break:break-word}
-table.vals{width:100%;border-collapse:collapse;font-size:13.5px}
-table.vals td{padding:5px 0;border-bottom:1px solid var(--line-soft);vertical-align:top}
-table.vals td:last-child{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:12px}
-table.vals tr:last-child td{border-bottom:0}
-.look{margin:12px 0 0;padding-left:18px;font-size:14px;color:var(--ink-2)}
-.look li{margin:4px 0}
-.fields{display:grid;grid-template-columns:1fr;gap:10px}
-.field{display:grid;grid-template-columns:minmax(0,1fr) 150px;align-items:center;gap:12px}
-.field label{font-size:13.5px}
-.field label small{display:block;color:var(--ink-3);font-size:12px}
-.field .in{display:flex;align-items:center;gap:6px;justify-content:flex-end}
-.field input[type=number],.field input[type=text],.field select{width:100%;max-width:150px;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--paper);font-family:var(--mono);font-size:13.5px;text-align:right}
-.field input[type=text]{font-family:var(--body);text-align:left}
-.field .unit{font-family:var(--mono);font-size:12px;color:var(--ink-3);min-width:34px}
-.field.wide{grid-template-columns:1fr}
-.field.wide input[type=text]{max-width:none}
-.results{display:flex;flex-direction:column;gap:8px}
-.res{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line-soft)}
-.res:last-child{border-bottom:0}
-.res .l{font-size:13.5px}
-.res .l small{display:block;color:var(--ink-3);font-size:12px}
-.res .v{font-family:var(--mono);font-size:18px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
-.res .v.big{font-size:26px;color:var(--accent)}
+.btn.lg{height:44px;padding:0 18px;border-radius:8px;font-size:14px}
+.btn svg{flex:none}
+.linkbtn{background:none;border:0;padding:0;font:inherit;font-size:13px;color:var(--accent);cursor:pointer}
+.linkbtn:hover{text-decoration:underline}
+.linkbtn.quiet{color:var(--ink-3)}
+/* ---- step screen ---- */
+.step-head{display:flex;flex-direction:column;gap:12px}
+.step-head .t{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap}
+.step-head .num{font-family:var(--display);font-weight:700;font-size:56px;line-height:1;letter-spacing:-.02em;color:var(--accent)}
+.step-head h1{font-family:var(--display);font-weight:700;font-size:40px;line-height:1.05;letter-spacing:-.01em;text-transform:uppercase;margin:0;text-wrap:balance}
+.step-head .who{margin-left:auto;align-self:center;display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:13px;color:var(--ink-3);text-align:right}
+.lede{font-size:15px;line-height:1.55;color:var(--ink-2);max-width:60ch;margin:0}
+.gateline{font-size:13px;color:var(--ink-3);margin:0}
+.warns{margin-top:40px}
+.cards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px;align-items:start;margin-top:40px}
+.cards.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.cards.two .card:nth-child(3){grid-column:1 / -1}
+.warns+.cards{margin-top:24px}
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:16px;min-width:0}
+.runrows{display:flex;flex-direction:column}
+.runrow{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:36px;padding:4px 0;border-bottom:1px solid var(--line-soft);font-size:13px;color:var(--ink-2)}
+.runrow:last-child{border-bottom:0}
+.runrow b{font-family:var(--mono);font-weight:400;font-size:13px;color:var(--ink);text-align:right}
+.disc{border-top:1px solid var(--line-soft);padding-top:12px}
+.disc>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;list-style:none;font-size:13px;color:var(--ink-3)}
+.disc>summary::-webkit-details-marker{display:none}
+.disc>summary svg{color:var(--ink-3);transition:transform var(--dur-fast) var(--ease)}
+.disc[open]>summary svg{transform:rotate(90deg)}
+.disc ul{margin:16px 0 0;padding-left:18px;font-size:13.5px;line-height:1.55;color:var(--ink-2)}
+.disc li+li{margin-top:8px}
+.results{display:flex;flex-direction:column;gap:16px}
+.resrow{display:flex;flex-direction:column;gap:4px}
+.resrow.first{padding-bottom:16px;border-bottom:1px solid var(--line-soft)}
+.res{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+.res .l{font-size:13px;color:var(--ink-2)}
+.res .v{font-family:var(--mono);font-weight:500;font-size:18px;line-height:1.2;color:var(--ink);font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.resrow.first .v{font-size:28px;line-height:1;color:var(--accent)}
 .res .v.muted{color:var(--ink-3);font-size:14px}
+.resrow .sub{font-size:12px;color:var(--ink-3);text-align:right}
+.botrow{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-top:28px}
+.botrow .nav{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.donetoggle{position:relative;height:44px;display:inline-flex;align-items:center;gap:10px;padding:0 16px;background:var(--sheet);border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:14px;font-weight:500;color:var(--ink)}
+.donetoggle input{position:absolute;opacity:0;width:0;height:0}
+.donetoggle .box{flex:none;width:20px;height:20px;border-radius:4px;border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;color:transparent}
+.donetoggle input:checked+.box{background:var(--good);border-color:var(--good);color:var(--accent-ink)}
+.donetoggle:focus-within{outline:2px solid var(--focus);outline-offset:2px}
+/* ---- welcome ---- */
+.welcome{display:flex;flex-direction:column;gap:40px}
+.hero{display:flex;flex-direction:column;gap:24px;align-items:flex-start}
+.hero h1{font-family:var(--display);font-weight:700;font-size:40px;line-height:1.05;letter-spacing:-.01em;text-transform:uppercase;margin:0}
+.hero p{font-size:15px;line-height:1.55;color:var(--ink-2);max-width:60ch;margin:0}
+.cardgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;align-items:start}
+.dcard{background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:20px;display:flex;flex-direction:column;gap:16px;align-items:flex-start;min-width:0}
+.dcard .ttl{font-family:var(--display);font-weight:600;font-size:24px;line-height:1.1;color:var(--ink)}
+.pbar{width:100%;display:flex;align-items:center;gap:12px}
+.pbar .track{flex:1;height:6px;background:var(--line-soft);border-radius:999px;overflow:hidden}
+.pbar .fill{height:100%;background:var(--good);border-radius:999px}
+.pbar .cnt{flex:none;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.statusrow{display:flex;flex-wrap:wrap;align-items:center;gap:12px 24px;font-size:13px;color:var(--ink-3)}
+.statusrow .st{display:flex;align-items:center;gap:8px}
+.statusrow .d{flex:none;width:8px;height:8px;border-radius:50%;background:var(--line)}
+.statusrow .d.on{background:var(--good)}
+.quietlinks{display:flex;flex-wrap:wrap;gap:20px}
+.statusrow+.quietlinks{margin-top:-24px}
+/* ---- new dial-in form ---- */
+.form{display:flex;flex-direction:column;gap:32px;max-width:760px}
+.form h1{font-family:var(--display);font-weight:700;font-size:40px;line-height:1.05;letter-spacing:-.01em;text-transform:uppercase;margin:0}
+.fsec{display:flex;flex-direction:column;gap:16px}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.tile{height:64px;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px;background:var(--sheet);border:1px solid var(--line);border-radius:8px;font:inherit;font-size:15px;font-weight:500;color:var(--ink);text-align:left;cursor:pointer}
+.tile:hover{border-color:var(--ink-3)}
+.tile[aria-pressed="true"]{border:2px solid var(--accent);padding:0 15px;color:var(--accent)}
+.tile span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.inline{display:flex;flex-wrap:wrap;align-items:center;gap:12px;font-size:14px;color:var(--ink-2)}
+.inline input,.inline select{height:36px;padding:0 12px;background:var(--sheet);border:1px solid var(--line);border-radius:6px;font-size:14px;color:var(--ink)}
+.inline .mono{font-family:var(--mono);font-size:13px}
+.inline .select-wrap .dialin-select{height:36px;min-width:112px;background:var(--sheet)}
+.inline .grow{flex:1 1 240px;max-width:360px;min-width:0}
+.inline .pair{display:inline-flex;align-items:center;gap:12px;min-width:0;margin-left:12px}
+.inline .pair input{width:180px;max-width:100%}
+.names{border-top:1px solid var(--line);padding-top:16px}
+.names>summary{list-style:none;cursor:pointer;font-size:13px;color:var(--ink-3);display:flex;align-items:center;gap:8px}
+.names>summary::-webkit-details-marker{display:none}
+.names>summary svg{transition:transform var(--dur-fast) var(--ease)}
+.names[open]>summary svg{transform:rotate(90deg)}
+.names .fields{margin-top:16px;max-width:420px}
+.formrow{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap}
+.formrow .left{margin-right:auto;display:flex;gap:16px;flex-wrap:wrap}
+/* ---- kept for Print plan, Compare, dialogs and the helper bar ---- */
+.cards.one{grid-template-columns:minmax(0,1fr)}
+.card>.note{margin:0}
+.cmd{font-family:var(--mono);font-size:12px;line-height:1.6;background:var(--paper);border:1px solid var(--line-soft);border-radius:6px;padding:10px 12px;margin:0;word-break:break-word;color:var(--ink-2)}
+.fields{display:flex;flex-direction:column;gap:16px}
+.field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.field label{font-size:13px;color:var(--ink-2)}
+.field label small{display:block;color:var(--ink-3);font-size:12px}
+.field .in{display:flex;align-items:center;gap:8px}
+.field input,.field select{height:40px;padding:0 12px;border:1px solid var(--line);border-radius:6px;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:14px;min-width:0}
+.field input[type=number]{width:120px;font-family:var(--mono);text-align:right}
+.field input[type=text],.field select{width:100%}
+.field .unit{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
 .pill{display:inline-block;font-family:var(--data);font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--line-soft);color:var(--ink-2);vertical-align:middle}
 .pill.good{background:var(--good-soft);color:var(--good)}
 .pill.warn{background:var(--warn-soft);color:var(--warn)}
 .pill.bad{background:var(--bad-soft);color:var(--bad)}
-.step-btn .pill{margin-left:6px;font-size:10px;padding:1px 6px;vertical-align:1px}
-.step-btn>span:nth-child(2){min-width:0}
-.plan-list{margin:0;padding:0;list-style:none;font-size:13.5px}
-.plan-list li{display:grid;grid-template-columns:26px minmax(0,1fr);gap:10px;padding:6px 0;border-bottom:1px solid var(--line-soft)}
-.plan-list li:last-child{border-bottom:0}
-.plan-list .s{font-family:var(--display);font-weight:700;font-size:18px;line-height:1.25;color:var(--accent)}
-.plan td,.plan th{text-align:left;white-space:normal;font-family:var(--body);vertical-align:top}
-.plan td .sub{color:var(--ink-3);font-size:12px;font-family:var(--mono)}
-.done-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
-.done-row label{display:flex;align-items:center;gap:10px;font-weight:500;cursor:pointer}
-.done-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
-.nav{display:flex;gap:8px}
-.summary-text{font-family:var(--mono);font-size:13px;white-space:pre-wrap;background:var(--paper);border:1px solid var(--line-soft);border-radius:6px;padding:12px;margin:0}
-.compare{overflow-x:auto}
-.compare table{border-collapse:collapse;font-size:13px;min-width:640px;width:100%}
-.compare th,.compare td{padding:7px 10px;border-bottom:1px solid var(--line-soft);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
-.compare th{font-family:var(--data);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
-.compare th:first-child,.compare td:first-child{text-align:left;font-family:var(--body)}
-.printer-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
-.printer-form .field{grid-template-columns:1fr}
-.printer-form .field input{max-width:none;text-align:left}
+.plan-list{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 32px;font-size:13.5px}
+.plan-list li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:12px;align-items:center;min-height:24px;color:var(--ink-2)}
+.plan-list .s{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;background:var(--accent-soft);color:var(--accent);font-family:var(--data);font-size:11px;font-weight:600;letter-spacing:.06em}
+.compare.plan table{min-width:520px}
+.compare.plan th,.compare.plan td{text-align:left;white-space:normal;font-family:var(--body);vertical-align:middle;color:var(--ink-2);height:auto;padding:12px 24px 12px 0;line-height:1.5}
+.compare.plan th:last-child,.compare.plan td:last-child{padding-right:0}
+.compare.plan td:first-child{white-space:nowrap;width:1%}
+.compare.plan .nm{display:block;font-size:13px;font-weight:500;color:var(--ink)}
+.compare.plan .tg{display:block;margin-top:2px;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.summary-text{font-family:var(--mono);font-size:13px;white-space:pre-wrap;overflow-wrap:anywhere;background:var(--paper);border:1px solid var(--line-soft);border-radius:6px;padding:12px;margin:0}
+.compare{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;max-width:100%;margin:0}
+.compare table{border-collapse:collapse;font-size:13px;min-width:420px;width:100%}
+.compare th,.compare td{height:36px;padding:0 24px 0 0;border-bottom:1px solid var(--line-soft);text-align:right;white-space:nowrap;font-family:var(--mono);font-weight:400;font-variant-numeric:tabular-nums;color:var(--ink)}
+.compare th:last-child,.compare td:last-child{padding-right:0}
+.compare tbody tr:last-child th,.compare tbody tr:last-child td{border-bottom:0}
+.compare thead th{height:auto;padding-bottom:12px;vertical-align:bottom;font-family:var(--data);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.compare .lbl,.compare th:first-child,.compare td:first-child{text-align:left;font-family:var(--body);font-weight:400;color:var(--ink-2)}
+.compare .nm{display:block;font-family:var(--body);font-size:13px;font-weight:500;letter-spacing:0;text-transform:none;color:var(--ink)}
+.compare .tg{display:block;margin-top:2px;font-family:var(--mono);font-size:12px;font-weight:400;letter-spacing:0;text-transform:none;color:var(--ink-3)}
+.compare .na{color:var(--ink-3)}
 .note{font-size:13px;color:var(--ink-3);margin:10px 0 0}
-.example-flag{font-size:12px;color:var(--warn);font-weight:500}
-.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:6px;font-size:13px;opacity:0;transition:opacity var(--dur-base) var(--ease);pointer-events:none;box-shadow:var(--shadow-lg)}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:6px;font-size:13px;opacity:0;transition:opacity var(--dur-base) var(--ease);pointer-events:none;box-shadow:var(--shadow-lg);z-index:60}
 .toast.show{opacity:1}
 @media (prefers-reduced-motion: reduce){.toast{transition:none}}
-.export{background:var(--sheet);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:18px 20px;width:min(640px,calc(100vw - 32px))}
-.export::backdrop{background:rgba(0,0,0,.55)}
-.export h2{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.02em;text-transform:uppercase;margin:0 0 6px}
-.export p{margin:0 0 10px;font-size:13.5px;color:var(--ink-2)}
-.export textarea{width:100%;height:220px;font-family:var(--mono);font-size:12px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px;resize:vertical}
-.export-actions{display:flex;gap:8px;margin-top:10px}
-.helper{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;background:var(--sheet);border:1px solid var(--line);border-radius:12px;padding:12px 16px;margin:0 0 20px;font-size:13px;box-shadow:var(--shadow-sm)}
-.helper .st{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;color:var(--ink-2)}
-.helper .st .dot{width:8px;height:8px}
-.helper .grow{flex:1 1 auto}
-.log{position:fixed;right:0;bottom:0;left:272px;background:var(--rail);border-top:1px solid var(--line);z-index:5;max-height:38vh;display:flex;flex-direction:column}
+/* ---- dialogs (Paths, Save preset / Export JSON) ---- */
+.export{background:var(--sheet);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:24px;width:min(640px,calc(100vw - 32px));box-shadow:var(--shadow-lg)}
+.export::backdrop{background:rgba(0,0,0,.45)}
+.export h2{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:.02em;text-transform:uppercase;line-height:1.1;margin:0 0 8px}
+.export p{margin:0 0 16px;font-size:13px;line-height:1.5;color:var(--ink-3)}
+.export .fields{gap:18px;margin:0 0 4px}
+.export .presetline{font-family:var(--mono);font-size:12.5px;line-height:1.5;color:var(--ink-2);margin:-4px 0 16px;word-break:break-word}
+.export-actions .btn:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+.export textarea{width:100%;height:240px;font-family:var(--mono);font-size:12px;line-height:1.55;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:10px 12px;resize:vertical}
+.export-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}
+/* ---- helper cluster + popover ---- */
+.hcluster{position:relative;display:flex;align-items:center;gap:8px;min-width:0}
+.hchip{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 4px;background:none;border:0;border-radius:6px;font-size:13px;font-weight:500;color:var(--ink-2);white-space:nowrap;cursor:pointer}
+.hchip:hover{color:var(--ink)}
+.hchip.off{cursor:default;color:var(--ink-3)}
+.hdot{width:8px;height:8px;border-radius:50%;background:var(--ink-3);flex:none}
+.hdot.ok{background:var(--good)}
+.hdot.warn{background:var(--warn)}
+.hbtn{height:32px;padding:0 12px;font-size:13px;white-space:nowrap;flex:none}
+.hpop{position:absolute;top:calc(100% + 10px);right:0;width:280px;background:var(--sheet);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow-lg);padding:14px 16px;z-index:40}
+.hrow{display:flex;align-items:center;gap:9px;padding:5px 0;font-size:13px;color:var(--ink-2)}
+.hrow .v{margin-left:auto;font-family:var(--mono);font-size:11.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:148px}
+.hwarn{margin:10px 0 0;font-size:12px;line-height:1.45;color:var(--warn)}
+.hacts{display:flex;flex-direction:column;gap:8px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line-soft)}
+.hacts .btn{height:32px;padding:0 12px;font-size:13px;justify-content:center}
+.hacts .btn:disabled{opacity:.45;cursor:default;border-color:var(--line)}
+.hacts .hpb{display:none}
+/* ---- log drawer ---- */
+.log{position:fixed;right:0;bottom:0;left:232px;background:var(--sheet);border-top:1px solid var(--line);z-index:5;max-height:38vh;display:flex;flex-direction:column}
 .log.min{max-height:none}
-.log .bar{display:flex;align-items:center;gap:10px;padding:8px 16px;font-family:var(--data);font-size:12px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);cursor:pointer}
+.log .bar{display:flex;align-items:center;gap:10px;min-height:44px;padding:8px 20px;cursor:pointer}
+.log .bar .lgt{font-family:var(--data);font-size:12px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);line-height:1}
+.log .bar .lgn{font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--ink-3);background:var(--rail);border:1px solid var(--line);border-radius:999px;padding:0 8px}
 .log .bar .grow{flex:1}
-.log ol{list-style:none;margin:0;padding:0 14px 10px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.5}
+.log .bar .btn{height:28px;padding:0 10px;font-size:12px}
+.log ol{list-style:none;margin:0;padding:0 20px 12px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.55}
 .log.min ol{display:none}
 .log li{white-space:pre-wrap;word-break:break-word;padding:1px 0}
 .log li.ev-plugin{color:var(--ink)}
@@ -159,11 +263,16 @@ table.vals tr:last-child td{border-bottom:0}
 .log li.ev-helper{color:var(--accent)}
 .log li.ev-slicer{color:var(--ink-3)}
 body.has-log main{padding-bottom:42vh}
+body.has-log:has(.log.min) main{padding-bottom:72px}
 @media (max-width:760px){.log{left:0}}
 .warnbar{background:var(--warn-soft);border-left:3px solid var(--warn);color:var(--ink);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13.5px;margin:0 0 16px}
 .warnbar + .warnbar{margin-top:-8px}
-.gmap{overflow-x:auto;margin:0}
-.gmap svg{display:block;min-width:900px}
+.gmap{overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;max-width:100%;margin:0}
+.gmap svg{display:block}
+.gm-top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.gm-top .dialin-select{background:var(--paper)}
+.gm-sub{display:flex;flex-direction:column;gap:12px;min-width:0;border-top:1px solid var(--line-soft);padding-top:16px}
+.gm-note{font-size:12px;color:var(--ink-3);margin:0}
 .gmap text{font-family:var(--data);font-weight:500}
 .gmap .wave{font-size:11px;letter-spacing:.12em;fill:var(--ink-3)}
 .gmap .nd rect{fill:var(--sheet);stroke:var(--line);stroke-width:1.5}
@@ -174,68 +283,80 @@ body.has-log main{padding-bottom:42vh}
 .gmap .nd .tg{font-size:9.5px;letter-spacing:.1em;fill:var(--ink-3)}
 .gmap .ed{fill:none;stroke:var(--ink-3);stroke-width:1.4;opacity:.6}
 .gmap .ah{fill:var(--ink-3);stroke:none;opacity:.6}
-.gmap-head{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 0 12px;font-size:13px}
-.gmap-head select{padding:5px 8px;border:1px solid var(--line);border-radius:5px;background:var(--paper);font-size:13px;max-width:100%}
-.gmap-legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--ink-2);margin:12px 0 0}
+.gmap-legend{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:12px;color:var(--ink-2);margin:0}
 .gmap-legend .sw{display:inline-block;width:16px;height:11px;border-radius:3px;border:1.5px solid var(--line);background:var(--sheet);margin-right:7px;vertical-align:-1px}
 .gmap-legend .sw.done{background:var(--good-soft);border-color:var(--good)}
 .gmap-legend .sw.ready{border-color:var(--accent);border-width:2px}
 .gmap-legend .tg{font-family:var(--data);font-size:10px;letter-spacing:.1em;color:var(--ink-3);border:1px solid var(--line);border-radius:3px;padding:1px 5px;margin-right:7px}
-.gmap-tbl table{min-width:680px}
-.gmap-tbl th,.gmap-tbl td{text-align:left;white-space:normal;font-family:var(--body);vertical-align:top;width:26%}
+.gmap-tbl table{min-width:520px}
+.gmap-tbl th,.gmap-tbl td{text-align:left;white-space:normal;font-family:var(--body);vertical-align:middle;width:26%;height:36px;padding:6px 24px 6px 0;color:var(--ink-2)}
 .gmap-tbl th:first-child,.gmap-tbl td:first-child{width:22%;white-space:nowrap}
 .gmap-tbl td:first-child{color:var(--ink-3)}
 .rail-toggle{display:none}
+@media (max-width:900px){
+  .cards{grid-template-columns:minmax(0,1fr)}
+}
 @media (max-width:760px){
-  .app{grid-template-columns:minmax(0,1fr)}
-  .rail{border-right:0;border-bottom:1px solid var(--line);padding:16px}
-  .rail.collapsed .steps,.rail.collapsed .printer-list,.rail.collapsed .rail-actions,.rail.collapsed .eyebrow{display:none}
-  .rail-toggle{display:inline-block}
-  main{padding:20px 16px 48px}
-  .sheet-head h1{font-size:34px}
-  .field{grid-template-columns:1fr}
-  .field .in{justify-content:flex-start}
+  .topbar{height:auto;min-height:56px;flex-wrap:wrap;gap:8px 12px;padding:8px 16px}
+  .wordmark,.topbar-mid,.topbar-right{flex:0 1 auto}
+  .topbar-mid{order:3;flex-basis:100%}
+  .dialin-select{width:100%;max-width:none}
+  .topbar-right{justify-content:flex-start}
+  .hbtn{display:none}
+  /* the cluster is narrow and sits mid-bar on a phone, so the popover hangs off
+     the whole top bar instead and spans the screen with a 16px gutter */
+  .topbar{position:relative}
+  .hcluster{position:static}
+  .hpop{top:calc(100% + 8px);left:16px;right:16px;width:auto}
+  .hacts .hpb{display:inline-flex}
+  .export{width:calc(100vw - 32px);padding:20px}
+  .body{flex-direction:column}
+  .rail{width:auto;border-right:0;border-bottom:1px solid var(--line);padding:16px}
+  .rail.collapsed{display:none}
+  .rail-toggle{display:inline-flex}
+  main{padding:24px 16px 48px}
+  .step-head .num{font-size:44px}
+  .step-head h1{font-size:32px}
+  .hero h1,.form h1{font-size:32px}
+  .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .plan-list{grid-template-columns:minmax(0,1fr);gap:10px}
+  .gm-top .dialin-select{max-width:none;width:100%}
+}
+@media (max-width:480px){
+  .tiles{grid-template-columns:minmax(0,1fr)}
 }
 </style>
 </head>
 <body>
 
 <div class="app">
-  <aside class="rail" id="rail">
-    <div class="brand">PETG <span class="model">Dial-In</span> Sheet<small>PrusaSlicer 3.0 · calibration suite</small> <button class="btn small rail-toggle" id="railToggle" type="button">Menu</button></div>
-    <div>
-      <p class="eyebrow">Printers</p>
-      <div class="printer-list" id="printerList"></div>
-      <div class="rail-actions" style="margin-top:8px"><button class="btn small" id="addPrinter" type="button">Add printer</button></div>
-    </div>
-    <div>
-      <p class="eyebrow">Steps</p>
-      <div class="steps" id="stepList"></div>
-    </div>
-    <div class="rail-actions">
-      <button class="btn small" id="exportBtn" type="button">Export JSON</button>
-      <label class="btn small" for="importFile" style="cursor:pointer">Import JSON</label>
-      <input type="file" id="importFile" accept="application/json" hidden>
-      <button class="btn small danger" id="resetBtn" type="button">Clear all</button>
-    </div>
-  </aside>
-  <main id="main"></main>
+  <header class="topbar">
+    <div class="wordmark">PETG <span class="a">Dial-in</span></div>
+    <div class="topbar-mid" id="dialinSlot"></div>
+    <div class="topbar-right" id="helperBar"></div>
+    <button class="btn small rail-toggle" id="railToggle" type="button">Menu</button>
+  </header>
+  <div class="body">
+    <aside class="rail" id="rail"></aside>
+    <main id="main"></main>
+  </div>
 </div>
+<input type="file" id="importFile" accept="application/json" hidden>
 <div class="toast" id="toast" role="status"></div>
 <dialog class="export" id="pathsDialog" aria-labelledby="pathsTitle">
   <h2 id="pathsTitle">Paths</h2>
-  <p>Point the helper at the PrusaSlicer you are calibrating with. Both are remembered.</p>
   <div class="fields">
-    <div class="field wide"><label for="pathPrusa">PrusaSlicer folder or executable<small>the unpacked portable zip folder is fine, e.g. C:\Users\now\Downloads\PrusaSlicer-3.0.0-alpha11\PrusaSlicer-3.0.0-alpha11</small></label><input type="text" id="pathPrusa" spellcheck="false"></div>
-    <div class="field wide"><label for="pathPlugins">Plugins folder<small>in that PrusaSlicer: Plugins › Show User Plugins Folder, then paste the path (its parent data folder also works)</small></label><input type="text" id="pathPlugins" spellcheck="false"></div>
+    <div class="field"><label for="pathPrusa">PrusaSlicer folder or executable<small>The unpacked portable alpha folder is fine.</small></label><input type="text" id="pathPrusa" spellcheck="false"></div>
+    <div class="field"><label for="pathPlugins">Plugins folder<small>In that PrusaSlicer: Plugins › Show User Plugins Folder.</small></label><input type="text" id="pathPlugins" spellcheck="false"></div>
   </div>
-  <div class="export-actions"><button class="btn primary" id="pathsSave" type="button">Save paths</button><button class="btn" id="pathsClose" type="button">Cancel</button></div>
+  <div class="export-actions"><button class="btn" id="pathsClose" type="button">Cancel</button><button class="btn primary" id="pathsSave" type="button">Save</button></div>
 </dialog>
 <dialog class="export" id="exportDialog" aria-labelledby="exportTitle">
   <h2 id="exportTitle">Export sheet</h2>
-  <p>Copy this and save it as <code>petg-dialin-sheet.json</code>. Import it on another machine with Import JSON.</p>
+  <p class="presetline" id="exportPreset" hidden></p>
+  <p id="exportNote">Save this as petg-dialin-sheet.json. Import it on another machine.</p>
   <textarea id="exportText" readonly spellcheck="false"></textarea>
-  <div class="export-actions"><button class="btn primary" id="exportCopy" type="button">Copy JSON</button><button class="btn" id="exportClose" type="button">Close</button></div>
+  <div class="export-actions"><button class="btn" id="exportClose" type="button">Close</button><button class="btn" id="exportCopy" type="button">Copy JSON</button><button class="btn primary" id="exportWrite" type="button" hidden>Write to PrusaSlicer</button></div>
 </dialog>
 
 <script>
@@ -246,8 +367,9 @@ const KEY = "petg-dialin-sheet-v1";
 // ---------- state ----------
 function examplePrinter(){
   return {
-    id: "ex1", name: "Original Prusa MK4S 0.4 nozzle", tag: "MK4S 0.4", example: true,
-    filament: "Prusament PETG Jet Black", density: 1.27, baseMultiplier: 1.0, nozzle: 0.4, layer: 0.2,
+    id: "ex1", name: "Original Prusa MK4S 0.4 nozzle", tag: "MK4S 0.4", example: true, model: "MK4S", spool: "",
+    filament: "Prusament PETG Jet Black", presetName: "Prusament PETG Jet Black · MK4S 0.4 dialed",
+    density: 1.27, baseMultiplier: 1.0, nozzle: 0.4, layer: 0.2,
     steps: {
       clean: { done_by: "gcode", notes: "grey PETG plug, a little black grit at the tip", done: true },
       temp: { chosen: 245, notes: "Gloss even from 250 down; 240 wing started to fray", done: true },
@@ -267,24 +389,57 @@ function examplePrinter(){
   };
 }
 function blankPrinter(name, tag){
-  return { id: "p" + Date.now().toString(36), name, tag, example: false, filament: "Prusament PETG", density: 1.27,
-    baseMultiplier: 1.0, nozzle: 0.4, layer: 0.2, steps: {} };
+  return { id: "p" + Date.now().toString(36), name, tag, example: false, model: modelFromName(name),
+    filament: "Prusament PETG", presetName: presetDefault("Prusament PETG", tag), spool: "",
+    density: 1.27, baseMultiplier: 1.0, nozzle: 0.4, layer: 0.2, steps: {} };
 }
+// A dial-in is one printer + one material. `filament` is the material; `model` and the
+// PrusaSlicer preset name are derived from it and the nozzle.
+const MODELS = ["MK4S","MK4","CORE One","XL","MINI+","MK3S+","Other"];
+const PS_NAME = { "MK4S":"Original Prusa MK4S", "MK4":"Original Prusa MK4", "CORE One":"Original Prusa CORE One",
+  "XL":"Original Prusa XL", "MINI+":"Original Prusa MINI & MINI+", "MK3S+":"Original Prusa MK3S & MK3S+" };
+const MATERIALS = [["Prusament PETG",1.27],["Prusament PLA",1.24],["Prusament ASA",1.07],["Prusament PC Blend",1.22],["Prusament PA11 CF",1.10]];
+const NOZZLES = [0.25,0.4,0.5,0.6,0.8];
+function modelFromName(name){
+  const s = String(name || "");
+  if (/mk4\s*s/i.test(s)) return "MK4S";
+  if (/mk4/i.test(s)) return "MK4";
+  if (/core\s*one/i.test(s)) return "CORE One";
+  if (/(^|[^a-z])xl([^a-z]|$)/i.test(s)) return "XL";
+  if (/mini/i.test(s)) return "MINI+";
+  if (/mk3\s*s/i.test(s)) return "MK3S+";
+  return "Other";
+}
+function psName(model, nozzle){ const b = PS_NAME[model]; return b ? b + " " + (+nozzle || 0.4) + " nozzle" : ""; }
+function materialDensity(m){ const e = MATERIALS.find(x => x[0] === m); return e ? e[1] : 1.27; }
+function presetDefault(material, tag){ const m = String(material || ""), t = String(tag || "").trim();
+  return t ? m + " · " + t + " dialed" : m + " dialed"; }
 let state = load();
 function migrate(s){
   // flow used to store absolute pass1/pass2 percentages; it now stores a relative winner
   for (const p of s.printers || []) {
     const f = p.steps && p.steps.flow;
     if (f && f.winner === undefined && (f.pass1 != null || f.pass2 != null)) {
-      const abs = f.pass2 ?? f.pass1; if (abs != null && abs !== "") f.winner = +abs - 100;
-      f.method = f.method || "yolo"; delete f.pass1; delete f.pass2;
+      // each pass was an absolute M221 percentage; both are kept, as pass 2 is relative to pass 1
+      if (f.pass1 != null && f.pass1 !== "") f.winner = +f.pass1 - 100;
+      if (f.pass2 != null && f.pass2 !== "") f.winner2 = +f.pass2 - 100;
+      f.method = (f.pass2 != null && f.pass2 !== "") ? "twopass" : (f.method || "yolo");
+      delete f.pass1; delete f.pass2;
     }
+    // a printer row is now a dial-in: printer model, material, preset name, spool
+    if (!p.model) p.model = modelFromName(p.name);
+    if (!p.filament) p.filament = "Prusament PETG";
+    if (!p.presetName) p.presetName = presetDefault(p.filament, p.tag);
+    if (p.spool === undefined) p.spool = "";
+    if (!p.steps) p.steps = {};
   }
+  if (s.step === "printer") s.step = "edit";              // the old printer form is now Edit
+  if (!s.step) s.step = "welcome";
   return s;
 }
 function load(){
   try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.printers && s.printers.length) return migrate(s); } catch(e){}
-  return { printers: [examplePrinter()], active: "ex1", step: "temp" };
+  return { printers: [examplePrinter()], active: "ex1", step: "welcome" };
 }
 function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
 function printer(){ return state.printers.find(p => p.id === state.active) || state.printers[0]; }
@@ -333,117 +488,117 @@ function volLimit(p){ const c = num(sd(p,"vol").clean); return c ? c * 0.85 : nu
 // ---------- steps ----------
 const BED = "Bed: add a new build plate (the + next to the bed tabs) and select it before running. Towers keep their own per-layer G-code on their bed.";
 const STEPS = [
-  { id:"clean", n:0, name:"Nozzle clean", share:"printer", cmd:"0. Nozzle clean before testing",
-    purpose:"Start every printer with a clean nozzle and hotend, before any test is printed. A partial clog or a skin of burnt residue holds back flow and shifts the temperature the plastic actually reaches, so two otherwise identical machines disagree and the disagreement gets written down as a printer difference. Clean first and the rest of the sheet measures the printer, not the debris in it.",
-    run:p=>[["Cleaning filament","nylon (or pla)"],["Purge temperature","0 = material default (nylon 270, PLA 270)"],["Cold pull temperature","0 = material default (nylon 130, PLA 100)"],["Purge","100"],["Firmware","prusa"]],
-    look:["The command inserts the whole sequence as first-layer G-code on a small anchor plate: it heats to the purge temperature, runs the firmware's own filament change (M600) so the printer prompts you to insert the cleaning filament, purges, cools to the pull temperature, pauses for you to pull the filament out firmly by hand, then runs a second filament change to load the test filament and purges it.","The CORE One firmware also offers Control › Cold Pull as a manual alternative; either route is fine, the point is that the melt zone comes out clean.","Look at the tip you pulled: it should be a clean cast of the nozzle bore. Dark flecks, grit or a matte crust mean run it again.","Do this once per printer at the start of the sheet, and again any time results drift on a machine that was already dialed in."],
-    fields:[{k:"material",label:"Cleaning filament",type:"select",opts:[["nylon","Nylon"],["pla","PLA"]]},{k:"done_by",label:"Method used",type:"select",opts:[["gcode","Step 0 G-code sequence"],["firmware","Firmware Cold Pull menu"],["manual","Manual cold pull"]]},{k:"notes",label:"What came out (colour, debris)",type:"text",wide:true}],
-    result:p=>[{l:"Nozzle",s:"clean hotend is the baseline for every step below",v:sd(p,"clean").done?"clean":"—",big:!!sd(p,"clean").done}]},
-  { id:"temp", n:1, name:"Temperature tower", share:"model", cmd:"1. Temperature tower",
-    purpose:"Find the coolest temperature that still bonds layers and holds Prusa's bridge and overhang features. Thick solid parts stay warm between layers, so lean toward the cool end of what looks good. This is PrusaSlicer's own calibration model, printed solid.",
-    run:p=>[["Hottest section [C] (bottom)","260"],["Coolest section [C] (top)","235"],["Choose by interval","on"],["Interval [C]","5"],["Number of sections","6 (used when interval is off)"],["Print at 100% infill","on"],["Printer tag",p.tag]],
-    look:["Bands are 10 mm tall and engraved with their temperature at the left of the front face; hottest at the bottom.","Reject bands with sagging bridges, frayed overhangs, a dull matte surface (too cool) or drooping corners and glassy blobs (too hot).","Snap the tower at a band boundary: the coolest band that does not break cleanly is your floor."],
-    fields:[{k:"chosen",label:"Chosen temperature",unit:"°C",type:"number",step:1},{k:"notes",label:"Notes",type:"text",wide:true}],
+  { id:"clean", n:0, name:"Nozzle clean", short:"Nozzle clean", share:"printer", cmd:"0. Nozzle clean before testing",
+    purpose:"A clean hotend first, so the sheet measures the printer and not debris.",
+    run:p=>[["Filament","nylon or PLA"],["Purge temperature","0 (material default)"],["Pull temperature","0 (material default)"],["Purge","100"],["Firmware","prusa"]],
+    look:["The sequence heats, purges, prompts a filament change, cools, then pauses for the pull.","Pull the filament out firmly by hand when the printer pauses.","The tip should be a clean cast of the nozzle bore; flecks or crust mean run it again.","Do this once per printer, and again whenever a dialed-in machine drifts."],
+    fields:[{k:"material",label:"Cleaning filament",type:"select",opts:[["nylon","Nylon"],["pla","PLA"]]},{k:"done_by",label:"Method",type:"select",opts:[["gcode","G-code sequence"],["firmware","Firmware cold pull"],["manual","Manual cold pull"]]},{k:"notes",label:"What came out",type:"text",ph:"colour, debris"}],
+    result:p=>[{l:"Nozzle",s:"baseline for every step below",v:sd(p,"clean").done?"clean":"—",big:!!sd(p,"clean").done}]},
+  { id:"temp", n:1, name:"Temperature tower", short:"Temperature", share:"model", cmd:"1. Temperature tower",
+    purpose:"Coolest temperature that still bonds layers and holds the bridges.",
+    run:p=>[["Hottest","260"],["Coolest","235"],["By interval","on"],["Interval","5"],["Sections","6"],["Solid","on"],["Tag",p.tag]],
+    look:["Bands are 10 mm tall, temperature engraved at the left of each front face.","Too cool: dull matte surface, sagging bridges, frayed overhangs.","Too hot: drooping corners and glassy blobs.","Snap the tower at a band boundary; the coolest band that does not break cleanly is the floor."],
+    fields:[{k:"chosen",label:"Chosen temperature",unit:"°C",type:"number",step:1},{k:"notes",label:"Notes",type:"text"}],
     result:p=>{const t=num(sd(p,"temp").chosen);return[
-      {l:"Nozzle temperature",v:t?f(t,0)+" °C":"—",big:!!t},
-      {l:"First layer temperature",s:"Prusa's PETG profile runs the first layer 10 °C cooler",v:t?f(t-10,0)+" °C":"—"}];}},
-  { id:"vol", n:2, name:"Max volumetric flow", share:"model", cmd:"2. Max volumetric flow",
-    purpose:"Find how fast this hotend can actually melt PETG, on PrusaSlicer's own single-wall comb. Solid infill on a fast printer under-extrudes silently when the limit is too high, and the part loses mass and strength. Run it with the temperature from step 1 already applied; flow comes later, so the melt limit is measured before the multiplier moves.",
-    run:p=>[["Lowest flow [mm3/s] (bottom)","6"],["Highest flow [mm3/s] (top)","24"],["Choose by interval","off"],["Interval [mm3/s]","3 (used when interval is on)"],["Number of sections","7"],["Section height","6"],["Prusa single-wall comb","on"],["Extrusion width","(blank)"],["Write 0 into the preset's limits","off"],["Printer tag",p.tag]],
-    look:["Before slicing, set Filament Settings › Advanced › Max volumetric speed to 0 and the cooling slowdown to 0 for this print, or the profile will cap the upper bands. (The command can write those for you, but writing into presets is suspected in the alpha's profile-switch crash, so it is off by default.)","Bands are labelled in mm³/s on the solid column beside the comb; a fatter line marks each band boundary. Look for the first band where the wall gets gaps, goes matte and rough, or the extruder clicks.","Take the highest clean band."],
+      {l:"Nozzle",v:t?f(t,0)+" °C":"—",big:!!t},
+      {l:"First layer",s:"10 °C cooler",v:t?f(t-10,0)+" °C":"—"}];}},
+  { id:"vol", n:2, name:"Max volumetric flow", short:"Max flow", share:"model", cmd:"2. Max volumetric flow",
+    purpose:"Fastest flow this hotend can melt cleanly, measured before the multiplier moves.",
+    run:p=>[["Lowest","6"],["Highest","24"],["By interval","off"],["Interval","3"],["Sections","7"],["Section height","6"],["Comb","on"],["Width","(blank)"],["Write limits","off"],["Tag",p.tag]],
+    look:["Set Max volumetric speed and the cooling slowdown to 0 first, or the profile caps the top bands.","Bands are labelled in mm³/s on the column beside the comb.","Find the first band with gaps, a matte rough wall, or extruder clicks.","Take the highest clean band."],
     fields:[{k:"clean",label:"Highest clean band",unit:"mm³/s",type:"number",step:0.5}],
     result:p=>{const l=volLimit(p);return[
-      {l:"Filament max volumetric speed",s:"85% of the highest clean band",v:l?f(l,1)+" mm³/s":"—",big:!!l},
-      {l:"Equivalent solid-infill speed",s:"at "+f(p.nozzle*1.125,3)+" × "+f(p.layer,2)+" mm lines",v:l?f(l/extrusionArea(p.nozzle*1.125,p.layer),0)+" mm/s":"—",muted:true}];}},
-  { id:"pa", n:3, name:"Pressure advance line", share:"printer", cmd:"3. Pressure advance › Line test (recommended)",
-    purpose:"OrcaSlicer's PA Line, the quickest PA test: one line per value, each a short slow run, a long fast run and a short slow run, with the value written beside it in extruded digits. Prints in a few minutes on the first layer. PrusaSlicer 3.0 stores the value in the filament preset (pressure advance: enabled, plus the value). Run it with the temperature and the volumetric limit applied; flow follows, because a clean corner makes the flow patches easier to read.",
-    run:p=>[["Lowest pressure advance (first line)","0.00"],["Highest pressure advance (last line)","0.08"],["Choose by interval","on"],["Interval","0.005"],["Number of lines","9 (used when interval is off)"],["Slow segment speed","20"],["Fast segment speed","100"],["Line spacing","5"],["Bed centre X / Y","0 (from printer name)"],["Retraction to mirror the slicer's","0.8"],["Firmware","prusa"],["Printer tag",p.tag]],
-    look:["The pattern is inserted as G-code on the first layer of a small anchor plate; check its position in the G-code preview before printing (it sits above the plate, centred on the bed). Needs relative extrusion (M83), which Prusa profiles use.","Pick the line whose fast middle run is the same width as its slow ends. Too little PA: the fast run starts thin and ends in a fat blob. Too much: the fast run starts fat and thins out, with a gap at the end. The value is written beside each line.","Alternative for a closer look at corners: 3. Pressure advance › Tower (alternative) (hollow tower with a notch, one value per 5 mm band, labels on the spine). Prusa firmware (MK4S, CORE One) can also self-calibrate PA: set the filament's PA mode to Automatic Calibration; use the line test to check its result."],
-    fields:[{k:"chosen",label:"Chosen pressure advance",unit:"",type:"number",step:0.001},{k:"notes",label:"Notes",type:"text",wide:true}],
+      {l:"Max volumetric speed",s:"85% of the highest clean band",v:l?f(l,1)+" mm³/s":"—",big:!!l},
+      {l:"Solid infill speed",s:"at "+f(p.nozzle*1.125,3)+" × "+f(p.layer,2)+" mm lines",v:l?f(l/extrusionArea(p.nozzle*1.125,p.layer),0)+" mm/s":"—",muted:true}];}},
+  { id:"pa", n:3, name:"Pressure advance line", short:"Pressure advance", share:"printer", cmd:"3. Pressure advance › Line test (recommended)",
+    purpose:"Pressure advance value that keeps line width even through the fast runs.",
+    run:p=>[["Lowest","0.00"],["Highest","0.08"],["By interval","on"],["Interval","0.005"],["Lines","9"],["Slow speed","20"],["Fast speed","100"],["Spacing","5"],["Bed centre","0 (from name)"],["Retraction","0.8"],["Firmware","prusa"],["Tag",p.tag]],
+    look:["The pattern is first-layer G-code on an anchor plate; check its position in the preview.","Each line's value is written beside it in extruded digits.","Pick the line whose fast middle run is the same width as its slow ends.","Too little: thin start, fat blob at the end. Too much: fat start, gap at the end."],
+    fields:[{k:"chosen",label:"Chosen value",unit:"",type:"number",step:0.001},{k:"notes",label:"Notes",type:"text"}],
     result:p=>{const v=num(sd(p,"pa").chosen);return[
-      {l:"Pressure advance",s:"filament preset: mode enabled, value as below (step 13 writes both)",v:v!==null?f(v,3):"—",big:v!==null},
-      {l:"Firmware command it maps to",s:"what the test inserted per line",v:v!==null?"M572 S"+f(v,3):"—",muted:true}];}},
-  { id:"flow", n:4, name:"Flow staircase (M221)", share:"printer", cmd:"4. Flow staircase (M221)",
-    purpose:"OrcaSlicer's flow calibration, built as a staircase because PrusaSlicer cannot set flow per object: every patch is printed at its own M221 value, with an Archimedean-chords top so the line spacing shows. The patches sit on 3-layer risers so they read as flat chips, the same mechanism as Crepmähn's 'Flow-Rate Calibration for PrusaSlicer' on Printables (per-layer M221), which is why per-object chips are not possible in PrusaSlicer. Patches are labelled relative to 100. The recommended method is one pass from -5 to +5% in 1% steps; the two-pass method sweeps wide first and then refines. M221 takes whole percentages, so there is no finer step than 1%. Run it with the temperature, the volumetric limit and the pressure advance already applied.",
+      {l:"Pressure advance",s:"step 13 writes mode and value",v:v!==null?f(v,3):"—",big:v!==null},
+      {l:"Firmware command",s:"inserted per line",v:v!==null?"M572 S"+f(v,3):"—",muted:true}];}},
+  { id:"flow", n:4, name:"Flow staircase (M221)", short:"Flow", share:"printer", cmd:"4. Flow staircase (M221)",
+    purpose:"Coarse extrusion multiplier, swept one M221 value per chip.",
     run:p=>{const m=flowMethod(p);const w=flowWinner(p);const rows=[];
-      const sweep=(lo,hi,iv,n)=>{rows.push(["Lowest flow modifier [%] (bottom chip)",lo],["Highest flow modifier [%] (top chip)",hi],["Choose by interval","on"],["Interval [%]",iv],["Number of chips",n]);};
-      if(m==="twopass"){ if(w===null) sweep("-20","+20","5","9"); else { sweep("-9","0","1","10"); rows.push(["Pass","2 — apply the pass-1 result first"]); } }
-      else sweep("-5","+5","1","11 (used when interval is off)");
-      rows.push(["Riser layers","3"]); rows.push(["Tread","16"]); rows.push(["Width","30"]); rows.push(["Print solid","on"]);
-      rows.push(["Top surface pattern","archimedeanchords"]); rows.push(["Printer tag",p.tag]); return rows;},
-    look:["The risers are only three layers tall, so each chip's number is engraved in the front band of its top surface. Look at the tops under a raking light: ridges and a scalloped shine mean too much flow, pinholes or visible gaps between the chords mean too little.","Enter the winning patch as its relative value: the +2 patch is +2, the middle patch is 0. If the best patch sits at either end of the sweep, apply it and run the test again to make sure the real optimum is not outside the range.","Two-pass method only: apply the pass-1 winner to the preset, print pass 2 (0 to -9 in 1% steps) and enter its winner below. The two corrections multiply, so pass 2 is always zero or negative.","Add M221 S100 to the printer's end G-code; M221 persists on the machine."],
-    fields:[{k:"method",label:"Test method",type:"select",opts:[["yolo","One pass, -5 to +5 by 1 (recommended)"],["twopass","Two passes: -20..+20 by 5, then 0..-9 by 1"]]},{k:"winner",label:"Winning patch (relative %, e.g. +2)",unit:"%",type:"number",step:1},{k:"winner2",label:"Pass 2 winning patch (0 to -9)",unit:"%",type:"number",step:1}],
+      const sweep=(lo,hi,iv,n)=>{rows.push(["Lowest",lo],["Highest",hi],["By interval","on"],["Interval",iv],["Chips",n]);};
+      if(m==="twopass"){ if(w===null) sweep("-20","+20","5","9"); else { sweep("-9","0","1","10"); rows.push(["Pass","2"]); } }
+      else sweep("-5","+5","1","11");
+      rows.push(["Riser layers","3"]); rows.push(["Tread","16"]); rows.push(["Width","30"]); rows.push(["Solid","on"]);
+      rows.push(["Top pattern","archimedeanchords"]); rows.push(["Tag",p.tag]); return rows;},
+    look:["Each chip's number is engraved in the front band of its top surface, relative to 100.","Under a raking light, ridges and shine mean too much flow, pinholes too little.","If the best chip sits at either end, apply it and run the sweep again.","Add M221 S100 to the printer's end G-code; M221 persists on the machine."],
+    fields:[{k:"method",label:"Method",type:"select",opts:[["yolo","One pass, -5 to +5 by 1"],["twopass","Two passes, apply pass 1 between"]]},{k:"winner",label:"Winning chip",unit:"%",type:"number",step:1},{k:"winner2",label:"Pass 2 chip",unit:"%",type:"number",step:1}],
     result:p=>{const me=flowMethod(p);const w=flowWinner(p);const w2=flowWinner2(p);const c=flowChosen(p);const m=c!==null?multiplierAfterFlow(p):null;
-      const how=(me==="twopass"?"two passes":"one pass")+(w!==null?", winner "+rel(w):", no winner entered")+(me==="twopass"?(w2!==null?", pass 2 "+rel(w2):", pass 2 not entered"):"");return[
+      const how=(me==="twopass"?"two passes":"one pass")+(w!==null?", winner "+rel(w):", no winner")+(me==="twopass"?(w2!==null?", pass 2 "+rel(w2):", pass 2 blank"):"");return[
       {l:"Chosen flow",s:how,v:c!==null?f(c,Number.isInteger(c)?0:2)+" %":"—"},
-      {l:"Extrusion multiplier after this step",s:"current "+f(p.baseMultiplier,4)+" × chosen % / 100; apply it before the slab and everything after it",v:m?f(m,4):"—",big:!!m}];}},
-  { id:"slab", n:5, name:"Solid slab, weighed", share:"printer", cmd:"5. Solid slab (mass check)",
-    purpose:"The precise flow test, run after the staircase so it checks and refines that result, and after the volumetric limit so it also proves the new speeds. A solid block of known volume weighed on a 0.01 g scale gives volumetric over-extrusion to about 0.1%, which is the small excess that piles up on the nozzle and drops as blobs over a long print.",
-    run:p=>{const s=sd(p,"slab");return[["Size X",String(num(s.x)??60)],["Size Y",String(num(s.y)??60)],["Height Z",String(num(s.z)??20)],["Add four witness posts",s.posts===false?"off":"on"],["Filament density","(blank, from preset)"],["Printer tag",p.tag]]},
-    look:["Print it with the multiplier from step 4, the pressure advance from step 3 and the limit from step 2 applied. Let it cool fully, brush off any strings, then weigh it.","Ridges on the top at the right mass point to step 7; blobs on the posts or edges usually clear once the mass is right.","Bigger is better for precision and for endurance: 100 × 100 × 40 mm is about 500 g and runs as long as a production part."],
-    fields:[{k:"x",label:"Size X",unit:"mm",type:"number",step:1,ph:"60"},{k:"y",label:"Size Y",unit:"mm",type:"number",step:1,ph:"60"},{k:"z",label:"Height Z",unit:"mm",type:"number",step:1,ph:"20"},{k:"posts",label:"Witness posts printed",type:"select",opts:[["true","yes"],["false","no"]]},{k:"printed_em",label:"Multiplier the slab was printed with",unit:"",type:"number",step:0.0001,ph:"from PrusaSlicer"},{k:"measured",label:"Measured mass",unit:"g",type:"number",step:0.01}],
+      {l:"Extrusion multiplier",s:f(p.baseMultiplier,4)+" × chosen % / 100",v:m?f(m,4):"—",big:!!m}];}},
+  { id:"slab", n:5, name:"Solid slab, weighed", short:"Slab", share:"printer", cmd:"5. Solid slab (mass check)",
+    purpose:"A solid block of known volume, weighed, to settle flow to about 0.1%.",
+    run:p=>{const s=sd(p,"slab");return[["Size X",String(num(s.x)??60)],["Size Y",String(num(s.y)??60)],["Height Z",String(num(s.z)??20)],["Witness posts",s.posts===false?"off":"on"],["Density","(from preset)"],["Tag",p.tag]]},
+    look:["Print it with the results of steps 2 to 4 applied.","Cool it fully, brush off any strings, then weigh on a 0.01 g scale.","Ridges on the top at the right mass point to step 7.","Bigger is more precise: 100 × 100 × 40 mm is about 500 g."],
+    fields:[{k:"x",label:"Size X",unit:"mm",type:"number",step:1,ph:"60"},{k:"y",label:"Size Y",unit:"mm",type:"number",step:1,ph:"60"},{k:"z",label:"Height Z",unit:"mm",type:"number",step:1,ph:"20"},{k:"posts",label:"Witness posts",type:"select",opts:[["true","yes"],["false","no"]]},{k:"printed_em",label:"Multiplier used",unit:"",type:"number",step:0.0001,ph:"from PrusaSlicer"},{k:"measured",label:"Measured mass",unit:"g",type:"number",step:0.01}],
     result:p=>{const n=slabNominal(p);const m=num(sd(p,"slab").measured);const after=multiplierAfterSlab(p);const err=m?(m/n.g-1)*100:null;return[
-      {l:"Nominal volume",s:"as engraved on the front",v:f(n.cm3,2)+" cm³",muted:true},
-      {l:"Expected mass",s:"at "+f(p.density,3)+" g/cm³, labels cost under 0.1 g"+(num(sd(p,"slab").slicer_expected_g)?"; PrusaSlicer logged "+f(sd(p,"slab").slicer_expected_g,2)+" g":""),v:f(n.g,2)+" g"},
+      {l:"Nominal volume",s:"engraved on the front",v:f(n.cm3,2)+" cm³",muted:true},
+      {l:"Expected mass",s:"at "+f(p.density,3)+" g/cm³"+(num(sd(p,"slab").slicer_expected_g)?"; PrusaSlicer logged "+f(sd(p,"slab").slicer_expected_g,2)+" g":""),v:f(n.g,2)+" g"},
       {l:"Over-extrusion",s:"measured / expected − 1",v:err!==null?(err>0?"+":"")+f(err,2)+" %":"—",pill:err===null?null:Math.abs(err)<0.3?["good","within 0.3%"]:Math.abs(err)<1?["warn","adjust"]:["bad","adjust and reprint"]},
-      {l:"Extrusion multiplier after this step",s:f(slabBaseMultiplier(p),4)+" × expected / measured",v:after?f(after,4):"—",big:!!after}];}},
-  { id:"cooling", n:6, name:"Cooling tower", share:"model", cmd:"6. Cooling tower",
-    purpose:"Find the least part cooling that still prints clean. For PETG this is the strength lever: more fan gives cleaner overhangs but weaker layer bonding, and a CORE One in its enclosure needs less than an open MK4S. A square tower with an overhang wing per band, plus a slender pillar 15 mm away that the head visits every layer, so it never gets time to cool and shows insufficient cooling first.",
+      {l:"Extrusion multiplier",s:f(slabBaseMultiplier(p),4)+" × expected / measured",v:after?f(after,4):"—",big:!!after}];}},
+  { id:"cooling", n:6, name:"Cooling tower", short:"Cooling", share:"model", cmd:"6. Cooling tower",
+    purpose:"Least fan that still prints clean; more fan means weaker layers.",
     run:p=>{const abyss=sd(p,"cooling").model==="abyss";const rows=[["Model",abyss?"Ultimate Fan Speed Test V3":"Built-in tower"]];
-      if(abyss) rows.push(["Fan","0% at the bottom to 100% at the top, 1% per mm, set by the model"]);
-      else rows.push(["Lowest fan [%] (bottom band)","0"],["Highest fan [%] (top band)","100"],["Choose by interval","on"],["Interval [%]","20"],["Number of bands","6 (used when interval is off)"],["Band height","8"],["Tower size","20"],["Overhang wing angle","45"]);
-      rows.push(["Write constant cooling into the preset","on"],["Printer tag",p.tag]);return rows;},
-    look:["'abyss' loads the fan model shipped with the plugin as assets/fan/ultimate-fan-test-v3.stl ('Ultimate Fan Speed Test V3' by Abyss, Printables 200347, CC BY-NC 4.0, used with attribution); with it the fan rises 1% per mm of height, so the height in mm of the best-looking band is the fan percentage, and the fan sweep rows are ignored in that mode.","The command pins the filament's fan values equal and zeroes the layer-time rules so its M106 per band is the only fan control; that modifies the filament preset (discard afterwards). It cannot switch off 'Enable dynamic fan speeds' (a checkbox); if the log warns, untick it in Filament › Cooling for this print.","Read the pillar first, bottom up: fused, bulging or glossy-soft layers mean too little cooling. Then the wings. Then look where it stops improving.","Take the lowest fan that is clean, not the highest that works. That becomes the minimum fan; the maximum (used on short layers) can sit 20% above it."],
-    fields:[{k:"model",label:"Model",type:"select",opts:[["tower","Built-in tower"],["abyss","Ultimate Fan Speed Test V3"]]},{k:"chosen",label:"Lowest clean fan",unit:"%",type:"number",step:5},{k:"max",label:"Maximum fan for short layers (blank = chosen + 20)",unit:"%",type:"number",step:5},{k:"notes",label:"Notes",type:"text",wide:true}],
+      if(abyss) rows.push(["Own fan","1% per mm"]);
+      else rows.push(["Fan low","0"],["Fan high","100"],["By interval","on"],["Interval","20"],["Bands","6"],["Band height","8"],["Tower size","20"],["Wing angle","45"]);
+      rows.push(["Write cooling","on"],["Tag",p.tag]);return rows;},
+    look:["Abyss model: the fan rises 1% per mm, so a band's height in mm is its fan percentage.","The command pins the filament's fan values for this print; discard the preset afterwards.","Read the pillar bottom up: fused, bulging or glossy-soft layers mean too little cooling.","Take the lowest fan that is clean, not the highest that works.","The plugin cannot untick Enable dynamic fan speeds; if the log warns, untick it in Filament › Cooling."],
+    fields:[{k:"model",label:"Model",type:"select",opts:[["tower","Built-in tower"],["abyss","Ultimate Fan Speed Test V3 (Abyss, CC BY-NC 4.0)"]]},{k:"chosen",label:"Lowest clean fan",unit:"%",type:"number",step:5},{k:"max",label:"Maximum fan",unit:"%",type:"number",step:5},{k:"notes",label:"Notes",type:"text"}],
     result:p=>{const c=num(sd(p,"cooling").chosen);const mx=num(sd(p,"cooling").max)??(c!==null?Math.min(100,c+20):null);return[
-      {l:"Minimum fan speed",s:"filament preset, applied on long layers",v:c!==null?f(c,0)+" %":"—",big:c!==null},
-      {l:"Maximum fan speed",s:"applied when layers get shorter than the fan threshold",v:mx!==null?f(mx,0)+" %":"—"}];}},
-  { id:"overlap", n:7, name:"Infill overlap calibration", share:"printer", cmd:"7. Infill overlap calibration",
-    purpose:"Only after flow is right. Overlap sets how far solid infill lines push into the perimeters. Too little leaves a gap or a row of pinholes just inside the innermost perimeter on the top layer; too much pushes infill into the walls, which shows as ridges beside the perimeters on top and as a slight bulge on the sides of 100% infill parts.",
-    run:p=>[["Lowest overlap (first block)","10%"],["Highest overlap (last block)","35%"],["Choose by interval","on"],["Interval","5%"],["Number of blocks","6 (used when interval is off)"],["Block size","25"],["Block height","8"],["Advanced: setting","infill_overlap"],["Printer tag",p.tag]],
-    look:["Each block carries its value on the front; the swept key is on the back of the second block.","Take the lowest overlap with no visible gap between the innermost perimeter and the infill on the top layer. Measure block width with calipers: it should not grow with overlap.","PrusaSlicer's overlap is a percentage of the infill extrusion width; the stock default is 25%."],
-    fields:[{k:"chosen",label:"Chosen infill overlap",unit:"%",type:"number",step:1},{k:"notes",label:"Notes",type:"text",wide:true}],
-    result:p=>{const c=num(sd(p,"overlap").chosen);return[{l:"Infill/perimeter overlap",v:c?f(c,0)+" %":"—",big:!!c}];}},
-  { id:"bar", n:8, name:"Shrinkage and growth bar", share:"model", cmd:"8. Shrinkage and growth bar",
-    purpose:"Separate thermal shrinkage from perimeter growth. PETG shrinks about 0.3 to 0.6% on cooling, so a 150 mm part comes out short while a 20 mm coupon looks fine. Hole centre distance ignores growth; width and hole diameter isolate it.",
-    run:p=>[["Bar length X","150"],["Bar width Y","20"],["Bar height Z","8"],["Hole diameter","6"],["Hole centre distance from each end","10"],["Printer tag",p.tag]],
-    look:["Measure the gap between the holes' near edges and between their far edges; their average is the centre distance and the growth cancels.","Measure the bar width and one hole diameter away from the first layer.","Put the bar on a flat surface and measure the gap under the worst corner with the caliper's depth rod or a steel rule. Warp is not a preset number: it decides whether long solid parts need a brim, a warmer bed or the enclosure on this printer.","The nominals are engraved on the front as C, W and D."],
-    fields:[{k:"c0",label:"Nominal centre distance C0",unit:"mm",type:"number",step:0.01,ph:"130"},{k:"w0",label:"Nominal width W0",unit:"mm",type:"number",step:0.01,ph:"20"},{k:"d0",label:"Nominal hole D0",unit:"mm",type:"number",step:0.01,ph:"6"},{k:"near",label:"Near-edge gap between holes",unit:"mm",type:"number",step:0.01},{k:"far",label:"Far-edge gap between holes",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"d",label:"Measured hole diameter",unit:"mm",type:"number",step:0.01},{k:"lift",label:"Corner lift (bar on a flat surface, gap under the worst corner)",unit:"mm",type:"number",step:0.05}],
-    result:p=>{const r=barResult(p);const lift=num(sd(p,"bar").lift);const liftRow=lift===null?{l:"Warp",s:"corner lift",v:"—",muted:true}:lift<0.1?{l:"Warp",s:"corner lift; bed adhesion is fine for parts this size",v:f(lift,2)+" mm",pill:["good","flat"]}:lift<0.3?{l:"Warp",s:"corner lift; add a 5 mm brim and raise the bed 5 °C for long solid parts",v:f(lift,2)+" mm",pill:["warn","brim"]}:{l:"Warp",s:"corner lift; enclosure or chamber preheat, brim, and avoid long thin solid parts on this printer",v:f(lift,2)+" mm",pill:["bad","warping"]};return[liftRow,
-      {l:"Centre distance C",s:"(near + far) / 2",v:r.c!==null?f(r.c,3)+" mm":"—",muted:true},
-      {l:"Thermal shrinkage",s:"1 − C / C0",v:r.s!==null?f(r.s*100,3)+" %":"—",big:r.s!==null},
-      {l:"Scale factor for production models",s:"1 / (1 − shrinkage), each axis",v:r.scale!==null?f(r.scale,4):"—"},
-      {l:"XY growth per side",s:"from width "+(r.gW!==null?f(r.gW,3):"—")+", from hole "+(r.gD!==null?f(r.gD,3):"—"),v:r.g!==null?f(r.g,3)+" mm":"—",big:r.g!==null},
-      {l:"XY size compensation to set",s:"the negative of the growth",v:r.g!==null?f(-r.g,3)+" mm":"—"}];}},
-  { id:"gauge", n:9, name:"Hole and fit gauge", share:"printer", cmd:"9. Hole and fit gauge",
-    purpose:"XY compensation is one number, but small holes shrink more than large ones, and bolt holes and press fits are where parts fail between printers. A solid plate with a row of clearance holes for a 6 mm pin (0.0 to 0.5 mm extra), a row of 3 to 20 mm holes, two loose pins and 4 to 10 mm pegs, all in one object.",
-    run:p=>[["Pin diameter","6"],["Lowest clearance","0.0"],["Highest clearance","0.5"],["Clearance step","0.1"],["Plate thickness","6"],["Add the 3 to 20 mm hole row and pegs","on"],["Printer tag",p.tag]],
-    look:["Work along the clearance row: the first hole the pin enters without force is your sliding-fit clearance. A press fit wants less, a free-running fit more.","Measure a few holes from the size row and the pegs with calipers; the error per size tells you how much extra to give small holes in your models.","Clearances are engraved on the plate top; labels come out cleanest with a 0.4 nozzle."],
-    fields:[{k:"clearance",label:"First hole the pin enters freely",unit:"mm",type:"number",step:0.1},{k:"h4",label:"Measured 4 mm hole",unit:"mm",type:"number",step:0.01},{k:"h8",label:"Measured 8 mm hole",unit:"mm",type:"number",step:0.01},{k:"h20",label:"Measured 20 mm hole",unit:"mm",type:"number",step:0.01},{k:"peg8",label:"Measured 8 mm peg",unit:"mm",type:"number",step:0.01}],
-    result:p=>{const g=sd(p,"gauge");const rows=[];const c=num(g.clearance);rows.push({l:"Sliding-fit clearance",s:"design holes this much larger than the pin they take",v:c!==null?f(c,2)+" mm":"—",big:c!==null});for(const [k,n,label] of [["h4",4,"4 mm hole"],["h8",8,"8 mm hole"],["h20",20,"20 mm hole"],["peg8",8,"8 mm peg"]]){const m=num(g[k]);rows.push({l:label,s:"error against nominal",v:m!==null?(m-n>0?"+":"")+f(m-n,3)+" mm":"—",muted:m===null});}return rows;}},
-  { id:"small", n:10, name:"Small-feature tower", share:"model", cmd:"10. Small-feature tower",
-    purpose:"Where layer time gets short, PETG overheats: tips melt, round off or get dragged. A pyramid, a cone and 3, 5 and 8 mm pillars show at what size this printer's slowdown and fan rules stop coping. The enclosure matters, so it differs between a CORE One and an MK4S.",
-    run:p=>[["Feature height","40"],["Pyramid base","20"],["Cone base diameter","16"],["Add 3, 5 and 8 mm pillars","on"],["Printer tag",p.tag]],
-    look:["Note the height at which the pyramid and cone tips start to degrade and which pillars stay clean.","If tips melt: raise 'Slow down if layer print time is below' (seconds) or lower the minimum print speed, or allow more fan on short layers. If tips are clean but stringy or dragged: the layer time is already long enough, look at retraction and fan instead.","The log line shows the preset's current slowdown time and minimum speed."],
-    fields:[{k:"tips",label:"Tips clean to the top",type:"select",opts:[["true","yes"],["false","no"]]},{k:"slowdown",label:"Slow down below layer time to use",unit:"s",type:"number",step:1},{k:"minspeed",label:"Minimum print speed to use",unit:"mm/s",type:"number",step:1},{k:"notes",label:"Notes (heights, which pillars)",type:"text",wide:true}],
-    result:p=>{const s=sd(p,"small");return[{l:"Slow down below layer time",s:"filament preset",v:num(s.slowdown)!==null?f(s.slowdown,0)+" s":"keep"},{l:"Minimum print speed",s:"filament preset",v:num(s.minspeed)!==null?f(s.minspeed,0)+" mm/s":"keep"}];}},
-  { id:"coupon", n:11, name:"Reference coupon", share:"printer", cmd:"11. Reference coupon",
-    purpose:"One part per printer with everything applied: a thick solid body with a hole, an overhang wing on one end, and three thin fins (0.8, 1.2, 1.6 mm) on top. Measure it, judge the wing and the fins, and keep it; the tag and note are engraved.",
-    run:p=>{const r=barResult(p);return[["Length X","50"],["Width Y","25"],["Height Z","10"],["Through-hole diameter","10"],["Overhang wing angle","45"],["Thin-wall fins on top","on"],["Perimeters","2"],["XY size compensation",r.g!==null?f(-r.g,3):"(blank)"],["Elephant foot compensation",String(num(sd(p,"coupon").foot)??"0.2")],["Printer tag",p.tag],["Note","spool and date"]]},
-    look:["Measure length, width, height and the hole. Deviations should now be within caliper noise apart from shrinkage on the 50 mm length (about 0.2 mm at 0.4%).","Wing: the underside should be smooth with no curled edges. Fins: the 0.8 mm fin is two lines with no room for gap fill, 1.2 mm needs gap fill, 1.6 mm is three or four lines; all three should be solid with no holes.","A flared first layer means more elephant foot compensation; a pinched one means less."],
-    fields:[{k:"l",label:"Measured length",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"h",label:"Measured height",unit:"mm",type:"number",step:0.01},{k:"hole",label:"Measured hole",unit:"mm",type:"number",step:0.01},{k:"foot",label:"Elephant foot compensation used",unit:"mm",type:"number",step:0.01},{k:"overhang",label:"Overhang wing",type:"text",wide:true,ph:"clean / curled / drooping"},{k:"fins",label:"Thin fins 0.8 / 1.2 / 1.6",type:"text",wide:true,ph:"which ones are solid"}],
+      {l:"Minimum fan",s:"applied on long layers",v:c!==null?f(c,0)+" %":"—",big:c!==null},
+      {l:"Maximum fan",s:"applied on short layers",v:mx!==null?f(mx,0)+" %":"—"}];}},
+  { id:"overlap", n:7, name:"Infill overlap calibration", short:"Overlap", share:"printer", cmd:"7. Infill overlap calibration",
+    purpose:"How far solid infill pushes into the perimeters, once flow is right.",
+    run:p=>[["Lowest","10%"],["Highest","35%"],["By interval","on"],["Interval","5%"],["Blocks","6"],["Block size","25"],["Block height","8"],["Setting","infill_overlap"],["Tag",p.tag]],
+    look:["Each block carries its value on the front; the key is behind the second block.","Too little leaves a gap or pinholes inside the innermost perimeter on top.","Too much shows as ridges beside the perimeters and a bulge on the sides.","Take the lowest overlap with no gap; block width must not grow with overlap."],
+    fields:[{k:"chosen",label:"Chosen overlap",unit:"%",type:"number",step:1},{k:"notes",label:"Notes",type:"text"}],
+    result:p=>{const c=num(sd(p,"overlap").chosen);return[{l:"Infill overlap",s:"percentage of infill width; stock is 25%",v:c?f(c,0)+" %":"—",big:!!c}];}},
+  { id:"bar", n:8, name:"Shrinkage and growth bar", short:"Shrinkage", share:"model", cmd:"8. Shrinkage and growth bar",
+    purpose:"Separate thermal shrinkage from perimeter growth on a long bar.",
+    run:p=>[["Bar length X","150"],["Bar width Y","20"],["Bar height Z","8"],["Hole diameter","6"],["Hole inset","10"],["Tag",p.tag]],
+    look:["Measure the near-edge and far-edge gaps between the holes; their average cancels growth.","Measure the bar width and one hole diameter away from the first layer.","Stand the bar on a flat surface and measure the gap under the worst corner.","The nominals are engraved on the front as C, W and D."],
+    fields:[{k:"c0",label:"Nominal centre C0",unit:"mm",type:"number",step:0.01,ph:"130"},{k:"w0",label:"Nominal width W0",unit:"mm",type:"number",step:0.01,ph:"20"},{k:"d0",label:"Nominal hole D0",unit:"mm",type:"number",step:0.01,ph:"6"},{k:"near",label:"Near-edge gap",unit:"mm",type:"number",step:0.01},{k:"far",label:"Far-edge gap",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"d",label:"Measured hole",unit:"mm",type:"number",step:0.01},{k:"lift",label:"Corner lift",unit:"mm",type:"number",step:0.05}],
+    result:p=>{const r=barResult(p);const lift=num(sd(p,"bar").lift);const liftRow=lift===null?{l:"Warp",s:"corner lift",v:"—",muted:true}:lift<0.1?{l:"Warp",s:"bed adhesion is fine at this size",v:f(lift,2)+" mm",pill:["good","flat"]}:lift<0.3?{l:"Warp",s:"brim and a 5 °C hotter bed",v:f(lift,2)+" mm",pill:["warn","brim"]}:{l:"Warp",s:"enclosure, brim, avoid long solid parts",v:f(lift,2)+" mm",pill:["bad","warping"]};return[liftRow,
+      {l:"Centre distance",s:"(near + far) / 2",v:r.c!==null?f(r.c,3)+" mm":"—",muted:true},
+      {l:"Shrinkage",s:"1 − C / C0",v:r.s!==null?f(r.s*100,3)+" %":"—",big:r.s!==null},
+      {l:"Scale models by",s:"1 / (1 − shrinkage), each axis",v:r.scale!==null?f(r.scale,4):"—"},
+      {l:"XY growth",s:"per side; from width "+(r.gW!==null?f(r.gW,3):"—")+", hole "+(r.gD!==null?f(r.gD,3):"—"),v:r.g!==null?f(r.g,3)+" mm":"—",big:r.g!==null},
+      {l:"XY compensation",s:"negative of the growth",v:r.g!==null?f(-r.g,3)+" mm":"—"}];}},
+  { id:"gauge", n:9, name:"Hole and fit gauge", short:"Fit gauge", share:"printer", cmd:"9. Hole and fit gauge",
+    purpose:"How much clearance holes and press fits need on this printer.",
+    run:p=>[["Pin diameter","6"],["Lowest clearance","0.0"],["Highest clearance","0.5"],["Clearance step","0.1"],["Plate thickness","6"],["Holes and pegs","on"],["Tag",p.tag]],
+    look:["The first hole the pin enters without force is the sliding-fit clearance.","A press fit wants less clearance, a free-running fit more.","Measure a few holes from the size row and the pegs with calipers.","Clearances are engraved on the plate top."],
+    fields:[{k:"clearance",label:"Sliding-fit clearance",unit:"mm",type:"number",step:0.1},{k:"h4",label:"4 mm hole",unit:"mm",type:"number",step:0.01},{k:"h8",label:"8 mm hole",unit:"mm",type:"number",step:0.01},{k:"h20",label:"20 mm hole",unit:"mm",type:"number",step:0.01},{k:"peg8",label:"8 mm peg",unit:"mm",type:"number",step:0.01}],
+    result:p=>{const g=sd(p,"gauge");const rows=[];const c=num(g.clearance);rows.push({l:"Sliding fit",s:"design holes this much larger than the pin",v:c!==null?f(c,2)+" mm":"—",big:c!==null});for(const [k,n,label] of [["h4",4,"4 mm hole"],["h8",8,"8 mm hole"],["h20",20,"20 mm hole"],["peg8",8,"8 mm peg"]]){const m=num(g[k]);rows.push({l:label,s:"error against nominal",v:m!==null?(m-n>0?"+":"")+f(m-n,3)+" mm":"—",muted:m===null});}return rows;}},
+  { id:"small", n:10, name:"Small-feature tower", short:"Small features", share:"model", cmd:"10. Small-feature tower",
+    purpose:"How small a feature this printer holds before short layers overheat.",
+    run:p=>[["Feature height","40"],["Pyramid base","20"],["Cone diameter","16"],["Pillars","on"],["Tag",p.tag]],
+    look:["Note the height where the pyramid and cone tips start to degrade.","Note which of the 3, 5 and 8 mm pillars stay clean.","Melted tips: raise the slowdown time, lower the minimum speed, or allow more fan.","Clean but stringy tips: layer time is fine, look at retraction instead."],
+    fields:[{k:"tips",label:"Tips clean",type:"select",opts:[["true","yes"],["false","no"]]},{k:"slowdown",label:"Slowdown time",unit:"s",type:"number",step:1},{k:"minspeed",label:"Minimum speed",unit:"mm/s",type:"number",step:1},{k:"notes",label:"Notes",type:"text",ph:"heights, pillars"}],
+    result:p=>{const s=sd(p,"small");return[{l:"Slowdown time",s:"slow down below this layer time",v:num(s.slowdown)!==null?f(s.slowdown,0)+" s":"keep"},{l:"Minimum speed",s:"filament preset",v:num(s.minspeed)!==null?f(s.minspeed,0)+" mm/s":"keep"}];}},
+  { id:"coupon", n:11, name:"Reference coupon", short:"Coupon", share:"printer", cmd:"11. Reference coupon",
+    purpose:"One keeper part with everything applied: measure it, judge it, file it.",
+    run:p=>{const r=barResult(p);return[["Length X","50"],["Width Y","25"],["Height Z","10"],["Hole diameter","10"],["Wing angle","45"],["Top fins","on"],["Perimeters","2"],["XY compensation",r.g!==null?f(-r.g,3):"(blank)"],["Elephant foot",String(num(sd(p,"coupon").foot)??"0.2")],["Tag",p.tag],["Note","spool and date"]]},
+    look:["Measure length, width, height and the hole; only the 50 mm length should still show shrinkage.","The wing underside should be smooth, with no curled edges.","All three fins, 0.8, 1.2 and 1.6 mm, should come out solid with no holes.","A flared first layer means more elephant foot compensation; a pinched one means less."],
+    fields:[{k:"l",label:"Measured length",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"h",label:"Measured height",unit:"mm",type:"number",step:0.01},{k:"hole",label:"Measured hole",unit:"mm",type:"number",step:0.01},{k:"foot",label:"Elephant foot",unit:"mm",type:"number",step:0.01},{k:"overhang",label:"Overhang wing",type:"text",ph:"clean / curled / drooping"},{k:"fins",label:"Thin fins",type:"text",ph:"which ones are solid"}],
     result:p=>{const c=sd(p,"coupon");const r=barResult(p);const sc=r.s!==null?1-r.s:1;const L0=num(c.l0)??50,W0=num(c.w0)??25,H0=num(c.h0)??10,D0=num(c.hole0)??10;const rows=[["Length",num(c.l),L0*sc],["Width",num(c.w),W0*sc],["Height",num(c.h),H0],["Hole",num(c.hole),D0*sc]];return rows.map(([l,m,n])=>{const d=m!==null?m-n:null;return{l,s:"expected "+f(n,2)+" mm after shrinkage",v:d!==null?(d>0?"+":"")+f(d,3)+" mm":"—",pill:d===null?null:Math.abs(d)<=0.05?["good","ok"]:Math.abs(d)<=0.12?["warn","check"]:["bad","off"]};});}},
-  { id:"string", n:12, name:"Stringing tower", share:"model", cmd:"12. Stringing tower",
-    purpose:"Optional. Only needed when retraction or fan behaviour differs between machines. Keep the filament's fan settings constant while sweeping fan.",
-    run:p=>{const t=num(sd(p,"temp").chosen)??250;return[["Hottest section [C] (bottom)",f(t,0)],["Coolest section [C] (top)",f(t-25,0)],["Choose by interval","on"],["Interval [C]","5 (0 = constant temperature)"],["Number of sections","6 (used when interval is off or 0)"],["Bottom section fan","-1 (leave to slicer)"],["Fan increase per section","0"],["Printer tag",p.tag]]},
-    look:["Strings between the pillars at the chosen temperature mean the retraction needs work on that machine, not the filament.","If you sweep fan, the right pillar is labelled with the fan percentage."],
-    fields:[{k:"temp",label:"Temperature with least stringing",unit:"°C",type:"number",step:1},{k:"fan",label:"Fan chosen",unit:"%",type:"number",step:5},{k:"notes",label:"Notes",type:"text",wide:true}],
-    result:p=>{const s=sd(p,"string");return[{l:"Stringing note",v:num(s.temp)?f(s.temp,0)+" °C / "+(num(s.fan)!==null?f(s.fan,0)+" % fan":"fan as slicer"):"—"}];}},
-  { id:"apply", n:13, name:"Apply and save preset", share:"printer", cmd:"13. Apply dialed-in values",
-    purpose:"Type these into the Apply dialog (or save profile.lua below and run Tools › Apply values from profile.lua), then save the filament preset under this printer's name and select it in that printer's profile. Nothing is saved until you save the preset.",
-    run:p=>{const t=num(sd(p,"temp").chosen);const m=finalMultiplier(p);const v=volLimit(p);const o=num(sd(p,"overlap").chosen);return[["Nozzle temperature",t?f(t,0):"0 (keep)"],["First layer temperature",t?f(t-10,0):"0 (keep)"],["Extrusion multiplier",m?f(m,4):"(blank)"],["Filament max volumetric speed",v?f(v,1):"(blank)"],["Pressure advance",num(sd(p,"pa").chosen)!==null?f(sd(p,"pa").chosen,3):"(blank)"],["Infill/perimeter overlap",o?f(o,0)+"%":"(blank)"],["Min fan",num(sd(p,"cooling").chosen)!==null?f(sd(p,"cooling").chosen,0):"-1 (keep)"],["Max fan",num(sd(p,"cooling").chosen)!==null?f(num(sd(p,"cooling").max)??Math.min(100,sd(p,"cooling").chosen+20),0):"-1 (keep)"],["Slow down below layer time",num(sd(p,"small").slowdown)!==null?f(sd(p,"small").slowdown,0):"-1 (keep)"],["Minimum print speed",num(sd(p,"small").minspeed)!==null?f(sd(p,"small").minspeed,0):"-1 (keep)"],["Also set print preset to 100% rectilinear","on"]]},
-    look:["XY size compensation and elephant foot are per-object settings in PrusaSlicer, not preset values; put them in the print preset's Advanced page or on each object.","Scale production models by the factor from step 8 if the parts are large enough to care."],
-    fields:[{k:"presetName",label:"Saved filament preset name",type:"text",wide:true,ph:"Prusament PETG - "+"printer"}],
+  { id:"string", n:12, name:"Stringing tower", short:"Stringing", share:"model", cmd:"12. Stringing tower",
+    purpose:"Optional check when two machines string differently at the same settings.",
+    run:p=>{const t=num(sd(p,"temp").chosen)??250;return[["Hottest",f(t,0)],["Coolest",f(t-25,0)],["By interval","on"],["Interval","5"],["Sections","6"],["Fan bottom","-1 (slicer)"],["Fan step","0"],["Tag",p.tag]]},
+    look:["Strings between the pillars at the chosen temperature mean retraction needs work on that machine.","Keep the filament's fan settings constant while sweeping fan.","When you sweep fan, the right pillar is labelled with the fan percentage."],
+    fields:[{k:"temp",label:"Cleanest temperature",unit:"°C",type:"number",step:1},{k:"fan",label:"Chosen fan",unit:"%",type:"number",step:5},{k:"notes",label:"Notes",type:"text"}],
+    result:p=>{const s=sd(p,"string");return[{l:"Stringing",v:num(s.temp)?f(s.temp,0)+" °C / "+(num(s.fan)!==null?f(s.fan,0)+" % fan":"fan as slicer"):"—"}];}},
+  { id:"apply", n:13, name:"Apply and save preset", short:"Apply", share:"printer", cmd:"13. Apply dialed-in values",
+    purpose:"Type these into the Apply dialog, then save the preset under this printer.",
+    run:p=>{const t=num(sd(p,"temp").chosen);const m=finalMultiplier(p);const v=volLimit(p);const o=num(sd(p,"overlap").chosen);return[["Nozzle",t?f(t,0):"0 (keep)"],["First layer",t?f(t-10,0):"0 (keep)"],["Multiplier",m?f(m,4):"(blank)"],["Max volumetric",v?f(v,1):"(blank)"],["Pressure advance",num(sd(p,"pa").chosen)!==null?f(sd(p,"pa").chosen,3):"(blank)"],["Infill overlap",o?f(o,0)+"%":"(blank)"],["Min fan",num(sd(p,"cooling").chosen)!==null?f(sd(p,"cooling").chosen,0):"-1 (keep)"],["Max fan",num(sd(p,"cooling").chosen)!==null?f(num(sd(p,"cooling").max)??Math.min(100,sd(p,"cooling").chosen+20),0):"-1 (keep)"],["Slowdown time",num(sd(p,"small").slowdown)!==null?f(sd(p,"small").slowdown,0):"-1 (keep)"],["Minimum speed",num(sd(p,"small").minspeed)!==null?f(sd(p,"small").minspeed,0):"-1 (keep)"],["100% rectilinear","on"]]},
+    look:["Nothing is saved until you save the filament preset and select it in the printer's profile.","Or save profile.lua below and run Tools › Apply values from profile.lua.","XY compensation and elephant foot are per-object settings, not preset values.","Scale production models by the factor from step 8 when the parts are large."],
+    fields:[],
     result:null }
 ];
 
@@ -457,10 +612,6 @@ const GATES = {
 function stepDone(p, id){ return !!(p.steps[id] && p.steps[id].done); }
 function blockedBy(p, id){ return (GATES[id] || []).filter(g => !stepDone(p, g)).map(g => STEPS.find(s => s.id === g)).filter(Boolean); }
 function isReady(p, id){ return blockedBy(p, id).length === 0; }
-function blockedText(p, id){
-  const b = blockedBy(p, id); if (!b.length) return "";
-  return "Blocked: finish " + b.map(s => "step " + s.n + " " + s.name).join(", ") + " first. Their results are inputs to this test.";
-}
 
 // Steps that must be printed with an earlier result already applied.
 // Returns warning strings from the last DATA line's preset snapshot.
@@ -472,14 +623,14 @@ function consistencyWarnings(p){
   const atN = STEPS[at] ? STEPS[at].n : at;
   const t = num(sd(p,"temp").chosen);
   if (t && at > order.indexOf("temp") && snap.p_temperature && snap.p_temperature !== t)
-    w.push(`Step ${atN} was printed at ${snap.p_temperature} °C but step ${stepNumber("temp")} chose ${t} °C. Apply the temperature first (step ${stepNumber("apply")} or Tools › Apply values from profile.lua).`);
+    w.push(`Step ${atN} printed at ${snap.p_temperature} °C but step ${stepNumber("temp")} chose ${t} °C; apply it first.`);
   const pa = num(sd(p,"pa").chosen);
   if (pa !== null && at > order.indexOf("pa") && snap.p_pressure_advance != null && Math.abs(snap.p_pressure_advance - pa) > 0.0005)
-    w.push(`Step ${atN} was printed with pressure advance ${f(snap.p_pressure_advance,3)} in the preset but step ${stepNumber("pa")} chose ${f(pa,3)}. Apply it first (or the preset's PA mode is disabled and start G-code sets it).`);
+    w.push(`Step ${atN} printed with pressure advance ${f(snap.p_pressure_advance,3)} but step ${stepNumber("pa")} chose ${f(pa,3)}; apply it first.`);
   const m = multiplierAfterFlow(p);
   const target = multiplierAfterSlab(p) ?? m;
   if (flowChosen(p) && at > order.indexOf("flow") && snap.p_extrusion_multiplier && Math.abs(snap.p_extrusion_multiplier - target) > 0.0015 && Math.abs(snap.p_extrusion_multiplier - m) > 0.0015)
-    w.push(`Step ${atN} was printed with extrusion multiplier ${f(snap.p_extrusion_multiplier,4)} but the dialed-in value is ${f(target,4)}. Apply it first.`);
+    w.push(`Step ${atN} printed with multiplier ${f(snap.p_extrusion_multiplier,4)} but the dialed-in value is ${f(target,4)}; apply it first.`);
   return w;
 }
 
@@ -493,50 +644,110 @@ function stepStatus(p, st){
   if (d.done) return "done";
   return Object.keys(d).some(k => k !== "done" && d[k] !== "" && d[k] !== null && d[k] !== undefined) ? "partial" : "";
 }
+// ---------- icons (from the mock-ups) ----------
+const ICON = {
+  check: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5 L6.5 11.5 L12.5 4.5"></path></svg>',
+  tick:  '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 6.2 L4.8 8.5 L9.5 3.5"></path></svg>',
+  plus:  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3.5v9"></path><path d="M3.5 8h9"></path></svg>',
+  right: '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4 L10 8 L6 12"></path></svg>',
+  left:  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 4 L6 8 L10 12"></path></svg>',
+  down:  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5 L8 10.5 L12 6.5"></path></svg>',
+  save:  '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2.5h8l2 2V13.5H3z"></path><path d="M5 2.5v4h5v-4"></path><path d="M5 13.5v-4h6v4"></path></svg>',
+  radio: '<svg width="18" height="18" viewBox="0 0 18 18" fill="none"><circle cx="9" cy="9" r="8" stroke="currentColor" stroke-width="1.5"></circle><circle cx="9" cy="9" r="4" fill="currentColor"></circle></svg>'
+};
+
+// Progress is counted over the thirteen measured steps; step 13 applies them.
+const PROGRESS = STEPS.filter(s => s.id !== "apply");
+function doneCount(p){ return PROGRESS.filter(s => stepDone(p, s.id)).length; }
+function firstTodo(p){ const s = STEPS.find(x => !stepDone(p, x.id)); return s ? s.id : "apply"; }
+function dotClass(p, st){
+  if (stepDone(p, st.id)) return "done";
+  if (stepStatus(p, st) === "partial") return "partial";
+  return isReady(p, st.id) ? "ready" : "blocked";
+}
+function isStepView(){ return !(state.step === "welcome" || state.step === "new" || state.step === "plan" || state.step === "compare"); }
+
+function renderTopbar(){
+  const slot = $("#dialinSlot");
+  slot.innerHTML = (isStepView() && state.printers.length)
+    ? `<span class="select-wrap"><select class="dialin-select" id="dialinSelect" aria-label="Dial-in">${state.printers.map(x => `<option value="${x.id}"${x.id === printer().id ? " selected" : ""}>${esc(x.filament)} · ${esc(x.tag)}</option>`).join("")}</select>${ICON.down}</span>`
+    : "";
+  renderHelperBar();
+}
 function renderRail(){
   const p = printer();
-  $("#printerList").innerHTML = state.printers.map(x => `<button class="printer-btn" type="button" data-printer="${x.id}" aria-current="${x.id===p.id}"><span>${esc(x.name)}${x.example?' <span class="example-flag">example</span>':''}</span><span class="tag">${esc(x.tag)}</span></button>`).join("");
-  const items = STEPS.map(st => {
-    const done = stepDone(p, st.id);
-    const pill = done ? "" : isReady(p, st.id) ? ' <span class="pill good">Ready</span>' : ' <span class="pill">Blocked</span>';
-    return `<button class="step-btn" type="button" data-step="${st.id}" aria-current="${state.step===st.id}"><span class="num">${st.n}</span><span>${esc(st.name)}${pill}</span><span class="dot ${stepStatus(p,st)}"></span></button>`;
-  });
-  items.push(`<button class="step-btn" type="button" data-step="printer" aria-current="${state.step==="printer"}"><span class="num">·</span><span>Printer details</span><span class="dot"></span></button>`);
-  items.push(`<button class="step-btn" type="button" data-step="compare" aria-current="${state.step==="compare"}"><span class="num">≡</span><span>Compare printers</span><span class="dot"></span></button>`);
-  items.push(`<button class="step-btn" type="button" data-step="plan" aria-current="${state.step==="plan"}"><span class="num">·</span><span>Print plan</span><span class="dot"></span></button>`);
-  $("#stepList").innerHTML = items.join("");
+  const quiet = `<div class="rsep"></div><div class="rlist">
+      <button class="rrow quiet" type="button" data-step="plan" aria-current="${state.step === "plan"}">Print plan</button>
+      <button class="rrow quiet" type="button" data-step="compare" aria-current="${state.step === "compare"}">Compare</button>`;
+  if (isStepView()) {
+    const rows = STEPS.map(st => `<button class="rrow" type="button" data-step="${st.id}" aria-current="${state.step === st.id}"><span class="n">${st.n}</span><span class="nm">${esc(st.short)}</span><span class="sdot ${dotClass(p, st)}"></span></button>`).join("");
+    $("#rail").innerHTML = `<p class="eyebrow">Steps</p><div class="rlist">${rows}</div>${quiet}
+      <button class="rrow quiet strong" type="button" data-act="preset"><span class="nm">Save preset</span>${ICON.save}</button></div>`;
+  } else {
+    const rows = state.printers.map(x => {
+      const n = doneCount(x);
+      return `<button class="rrow tall" type="button" data-open="${x.id}" aria-current="${x.id === p.id && state.step !== "welcome" && state.step !== "new"}"><span class="two"><b>${esc(x.filament)}</b><span>${esc(x.tag)} · ${n} of ${PROGRESS.length}</span></span>${n === PROGRESS.length ? `<span class="ok">${ICON.check}</span>` : ""}</button>`;
+    }).join("");
+    // the New row is a rail child, not a list item, so the rail's 14px gap separates it
+    $("#rail").innerHTML = `<p class="eyebrow">Dial-ins</p><div class="rlist">${rows}</div>
+      <button class="rrow new" type="button" data-step="new" aria-current="${state.step === "new"}">${ICON.plus}<span class="nm">New dial-in</span></button>${quiet}</div>`;
+  }
 }
 function fieldHtml(st, d, fl){
   const id = `f-${st.id}-${fl.k}`; const v = d[fl.k] ?? "";
   let input;
   if (fl.type === "select") input = `<select id="${id}" data-field="${fl.k}">${fl.opts.map(([ov,ol])=>`<option value="${ov}" ${String(v===""?fl.opts[0][0]:v)===ov?"selected":""}>${esc(ol)}</option>`).join("")}</select>`;
-  else if (fl.type === "text") input = `<input type="text" id="${id}" data-field="${fl.k}" value="${esc(v)}" placeholder="${esc(fl.ph||"")}">`;
+  else if (fl.type === "text") input = `<input type="text" id="${id}" data-field="${fl.k}" value="${esc(v)}" placeholder="${esc(fl.ph||"optional")}">`;
   else input = `<input type="number" id="${id}" data-field="${fl.k}" value="${esc(v)}" step="${fl.step||1}" inputmode="decimal" placeholder="${esc(fl.ph||"")}">`;
-  return `<div class="field ${fl.wide?"wide":""}"><label for="${id}">${esc(fl.label)}</label><div class="in">${input}${fl.unit?`<span class="unit">${fl.unit}</span>`:""}</div></div>`;
+  return `<div class="field"><label for="${id}">${esc(fl.label)}</label><div class="in">${input}${fl.unit?`<span class="unit">${fl.unit}</span>`:""}</div></div>`;
 }
 function resultsHtml(st, p){
   if (!st.result) return "";
-  return st.result(p).map(r => `<div class="res"><div class="l">${esc(r.l)}${r.s?`<small>${esc(r.s)}</small>`:""}</div><div class="v ${r.big?"big":""} ${r.muted?"muted":""}">${esc(r.v)}${r.pill?` <span class="pill ${r.pill[0]}">${r.pill[1]}</span>`:""}</div></div>`).join("");
+  return st.result(p).map((r, i) => `<div class="resrow ${i===0?"first":""}">
+      <div class="res"><span class="l">${esc(r.l)}</span><span class="v ${r.muted&&i>0?"muted":""}">${esc(r.v)}${r.pill?` <span class="pill ${r.pill[0]}">${r.pill[1]}</span>`:""}</span></div>
+      ${r.s?`<div class="sub">${esc(r.s)}</div>`:""}</div>`).join("");
+}
+function runRowsHtml(st, p){
+  return st.run(p).map(([k,v]) => `<div class="runrow"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join("");
 }
 function renderStep(st){
   const p = printer(); const d = sd(p, st.id);
   const idx = STEPS.indexOf(st);
   const prev = STEPS[idx-1], next = STEPS[idx+1];
-  const beds = st.id === "apply" ? "" : `<p class="bed">${esc(BED)}</p>`;
-  const gate = blockedText(p, st.id);
-  const warns = (gate ? `<div class="warnbar">${esc(gate)}</div>` : "") + consistencyWarnings(p).map(w => `<div class="warnbar">${esc(w)}</div>`).join("");
-  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>${warns}
-    <div class="sheet-head"><h1><span class="n">${st.n}</span>${esc(st.name)}</h1><div class="who"><b>${esc(p.name)}</b><br>${esc(p.tag)} · ${esc(p.filament)} · current multiplier ${f(p.baseMultiplier,4)}</div></div>
-    <p class="purpose">${esc(st.purpose)}</p>
-    <div class="grid">
-      <section class="block"><h2><span class="k">A</span>Run in PrusaSlicer</h2>${beds}<div class="cmd">Plugins › Filament Dial-In › ${esc(st.cmd)}</div><table class="vals">${st.run(p).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table><ul class="look">${st.look.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></section>
-      <div style="display:flex;flex-direction:column;gap:20px">
-        <section class="block"><h2><span class="k">B</span>Measure</h2><div class="fields">${st.fields.map(fl=>fieldHtml(st,d,fl)).join("")}</div></section>
-        ${st.result?`<section class="block"><h2><span class="k">C</span>Result</h2><div class="results" id="results">${resultsHtml(st,p)}</div></section>`:`<section class="block"><h2><span class="k">C</span>Hand-off</h2><pre class="summary-text" id="summary">${esc(summaryText(p))}</pre><div style="margin-top:10px"><button class="btn small" id="copySummary" type="button">Copy</button></div></section>`}
-      </div>
+  const gate = blockedBy(p, st.id);
+  const warns = consistencyWarnings(p).map(w => `<div class="warnbar">${esc(w)}</div>`).join("");
+  const looks = (st.id === "apply" ? [] : [BED]).concat(st.look);
+  $("#main").innerHTML = `
+    <div class="step-head">
+      <div class="t"><span class="num">${st.n}</span><h1>${esc(st.name)}</h1>
+        <div class="who"><button class="linkbtn" type="button" data-step="edit">Edit</button></div></div>
+      <p class="lede">${esc(st.purpose)}</p>
+      ${gate.length ? `<p class="gateline">Needs step ${gate[0].n} first</p>` : ""}
     </div>
-    ${st.id==="apply"?`<section class="block" style="margin-top:20px"><h2><span class="k">D</span>profile.lua for the plugin</h2><p class="note" style="margin:0 0 10px">Every non-example printer on this sheet, keyed by its PrusaSlicer name. Save it as <code>profile.lua</code> in the bundle folder (${helper?"the helper does this for you":"copy it there by hand"}), then run <b>Plugins › Filament Dial-In › Tools › Apply values from profile.lua</b> on each printer instead of typing the values above. The towers also read the tag from it.</p><textarea class="summary-text" id="profileText" readonly spellcheck="false" style="width:100%;height:200px;resize:vertical">${esc(profileLua())}</textarea><div style="margin-top:10px;display:flex;gap:8px">${helper?`<button class="btn small primary" type="button" data-helper="profile">Save profile.lua to plugin</button>`:""}<button class="btn small" type="button" id="profileCopy">Copy</button></div></section>`:""}
-    <div class="done-row"><label><input type="checkbox" id="doneBox" ${d.done?"checked":""}> Step ${st.n} done for ${esc(p.tag)}</label><div class="nav">${prev?`<button class="btn" type="button" data-go="${prev.id}">← ${prev.n}</button>`:""}${next?`<button class="btn primary" type="button" data-go="${next.id}">Next: ${next.n}. ${esc(next.name)} →</button>`:`<button class="btn primary" type="button" data-go="compare">Compare printers →</button>`}</div></div>`;
+    ${warns ? `<div class="warns">${warns}</div>` : ""}
+    <div class="cards ${st.result?"":"two"}">
+      <section class="card">
+        <p class="eyebrow">Run</p>
+        <div class="cmd">Plugins › Filament Dial-In › ${esc(st.cmd)}</div>
+        <div class="runrows" id="runrows">${runRowsHtml(st, p)}</div>
+        <details class="disc"><summary><span>What to look for</span>${ICON.right}</summary><ul>${looks.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></details>
+      </section>
+      ${st.fields.length ? `<section class="card">
+        <p class="eyebrow">Measure</p>
+        <div class="fields">${st.fields.map(fl=>fieldHtml(st,d,fl)).join("")}</div>
+      </section>` : ""}
+      ${st.result
+        ? `<section class="card"><p class="eyebrow">Result</p><div class="results" id="results">${resultsHtml(st,p)}</div></section>`
+        : `<section class="card"><p class="eyebrow">Hand-off</p><pre class="summary-text" id="summary">${esc(summaryText(p))}</pre><div><button class="btn small" id="copySummary" type="button">Copy</button></div></section>`}
+    </div>
+    <div class="botrow">
+      <label class="donetoggle"><input type="checkbox" id="doneBox" ${d.done?"checked":""}><span class="box">${ICON.tick}</span><span>Done</span></label>
+      <div class="nav">
+        ${prev?`<button class="btn lg" type="button" data-go="${prev.id}">${ICON.left}<span>${prev.n} ${esc(prev.short)}</span></button>`:""}
+        ${next?`<button class="btn lg primary" type="button" data-go="${next.id}"><span>${next.n} ${esc(next.short)}</span>${ICON.right}</button>`
+              :`<button class="btn lg primary" type="button" data-act="preset"><span>Save preset</span>${ICON.save}</button>`}
+      </div>
+    </div>`;
   $("#main").querySelectorAll("[data-field]").forEach(el => el.addEventListener("input", () => {
     const k = el.dataset.field; let v = el.value;
     if (el.tagName === "SELECT") v = v === "true" ? true : v === "false" ? false : v;
@@ -550,11 +761,12 @@ function renderStep(st){
   $("#doneBox").addEventListener("change", e => { sd(printer(), st.id).done = e.target.checked; save(); renderRail(); });
   const cs = $("#copySummary"); if (cs) cs.addEventListener("click", () => { navigator.clipboard && navigator.clipboard.writeText(summaryText(printer())).then(()=>toast("Copied")); });
 }
-function refreshRun(st){ const t = $("#main .vals"); if (t) t.innerHTML = st.run(printer()).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join(""); }
+function refreshRun(st){ const t = $("#runrows"); if (t) t.innerHTML = runRowsHtml(st, printer()); }
 function summaryText(p){
   const t = num(sd(p,"temp").chosen), m = finalMultiplier(p), v = volLimit(p), o = num(sd(p,"overlap").chosen), r = barResult(p), foot = num(sd(p,"coupon").foot);
   return [
     `${p.name} (${p.tag}) · ${p.filament}`,
+    `Save the filament preset as: ${p.presetName}`,
     `Filament preset (step ${stepNumber("apply")}):`,
     `  temperature            ${t?f(t,0)+" C":"keep"}`,
     `  first layer temp       ${t?f(t-10,0)+" C":"keep"}`,
@@ -572,51 +784,219 @@ function summaryText(p){
     `  scale models by        ${r.scale!==null?f(r.scale,4)+" (shrinkage "+f(r.s*100,2)+" %)":"1 (no bar measured)"}`
   ].join("\n");
 }
-function renderPrinter(){
-  const p = printer();
-  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>
-    <div class="sheet-head"><h1>Printer details</h1><div class="who"><b>${esc(p.name)}</b></div></div>
-    <p class="purpose">These are the starting values the arithmetic uses. The current multiplier is what the filament preset had before you started; the slab result multiplies from it.${p.example?" This printer is an example with made-up measurements: edit it or add your own.":""}</p>
-    <section class="block"><div class="printer-form">
-      <div class="field"><label for="pf-name">Printer name<small>as PrusaSlicer shows it</small></label><input type="text" id="pf-name" data-p="name" value="${esc(p.name)}"></div>
-      <div class="field"><label for="pf-tag">Tag engraved on parts<small>short, e.g. MK4S #3</small></label><input type="text" id="pf-tag" data-p="tag" value="${esc(p.tag)}"></div>
-      <div class="field"><label for="pf-fil">Filament</label><input type="text" id="pf-fil" data-p="filament" value="${esc(p.filament)}"></div>
-      <div class="field"><label for="pf-den">Filament density<small>g/cm³, Prusament PETG 1.27</small></label><input type="number" step="0.001" id="pf-den" data-p="density" value="${p.density}"></div>
-      <div class="field"><label for="pf-mul">Current extrusion multiplier<small>from the preset before dialing in</small></label><input type="number" step="0.0001" id="pf-mul" data-p="baseMultiplier" value="${p.baseMultiplier}"></div>
-      <div class="field"><label for="pf-noz">Nozzle</label><input type="number" step="0.05" id="pf-noz" data-p="nozzle" value="${p.nozzle}"></div>
-      <div class="field"><label for="pf-lh">Layer height</label><input type="number" step="0.05" id="pf-lh" data-p="layer" value="${p.layer}"></div>
+function helperStatusHtml(){
+  if (!helper) return `<span class="st"><span class="d"></span>Helper off</span>`;
+  const h = helper;
+  const item = (on, text) => `<span class="st"><span class="d ${on?"on":""}"></span>${esc(text)}</span>`;
+  return item(!!h.bundle_installed_version, h.bundle_installed_version ? "Plugin v" + h.bundle_installed_version : "Plugin not installed")
+    + item(!!h.running, h.running ? "PrusaSlicer running" : (h.prusaslicer_exists ? "PrusaSlicer ready" : "PrusaSlicer not found"))
+    + item(!!h.profile_exists, h.profile_exists ? "profile.lua saved" : "profile.lua none");
+}
+function renderWelcome(){
+  const total = PROGRESS.length;
+  const cards = state.printers.map(p => {
+    const n = doneCount(p);
+    return `<div class="dcard"><p class="eyebrow">${esc(p.tag)}</p><div class="ttl">${esc(p.filament)}</div>
+      <div class="pbar"><div class="track"><div class="fill" style="width:${Math.round(n/total*100)}%"></div></div><span class="cnt">${n} of ${total}</span></div>
+      <button class="btn" type="button" data-open="${p.id}">${n===total?"Open":"Continue"}</button></div>`;
+  }).join("");
+  $("#main").innerHTML = `<div class="welcome">
+    <div class="hero">
+      <h1>Dial in a filament</h1>
+      <p>Thirteen prints, one variable each, until every printer makes the same part.</p>
+      <button class="btn lg primary" type="button" data-step="new">${ICON.plus}<span>New dial-in</span></button>
     </div>
-    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="resetBaseline" type="button">Reset baseline${p.baseline?` (now ${p.baseline.layer_height} mm, ${p.baseline.nozzle} nozzle, from step ${stepNumber(p.baselineStep)})`:""}</button><button class="btn danger small" id="delPrinter" type="button">Remove this printer</button></div>
-    <p class="note">The baseline is the layer height, nozzle and print profile recorded from the first PrusaSlicer run for this printer. Later runs that differ raise a warning on the step.</p></section>`;
-  $("#resetBaseline").addEventListener("click", () => { const q = printer(); q.baseline = null; q.baselineStep = null; q.baselineWarning = null; q.lastSnapshot = null; save(); render(); toast("Baseline cleared; the next run sets it"); });
-  $("#main").querySelectorAll("[data-p]").forEach(el => el.addEventListener("input", () => {
-    const k = el.dataset.p; printer()[k] = el.type === "number" ? (+el.value || 0) : el.value; if (k !== "name" && k !== "tag" && k !== "filament") {} printer().example = false; save(); renderRail();
+    <div class="cardgrid">${cards}</div>
+    ${helper ? `<div class="statusrow">${helperStatusHtml()}</div>` : ""}
+    <div class="quietlinks">
+      <button class="linkbtn quiet" type="button" data-act="export">Export JSON</button>
+      <label class="linkbtn quiet" for="importFile">Import JSON</label>
+      <button class="linkbtn quiet" type="button" data-act="reset">Clear all</button>
+    </div>
+  </div>`;
+}
+
+// ---------- new dial-in / edit ----------
+let draft = null, editReturn = "welcome";
+function draftFrom(p){
+  const known = p && MATERIALS.some(m => m[0] === p.filament);
+  return p ? { id:p.id, model:p.model || modelFromName(p.name), nozzle:+p.nozzle || 0.4, tag:p.tag || "",
+      material: known ? p.filament : "Other…", other: known ? "" : (p.filament || ""), spool:p.spool || "",
+      presetName:p.presetName || presetDefault(p.filament, p.tag), name:p.name || "",
+      layer:p.layer ?? 0.2, density:p.density ?? 1.27, mult:p.baseMultiplier ?? 1.0, presetTouched:true, nameTouched:true }
+    : { id:null, model:"MK4S", nozzle:0.4, tag:"", material:"Prusament PETG", other:"", spool:"", presetName:"", name:"",
+        layer:0.2, density:1.27, mult:1.0, presetTouched:false, nameTouched:false };
+}
+function draftMaterial(){ return draft.material === "Other…" ? (draft.other || "") : draft.material; }
+function syncDraft(){
+  if (!draft.presetTouched) draft.presetName = presetDefault(draftMaterial(), draft.tag);
+  if (!draft.nameTouched) { const n = psName(draft.model, draft.nozzle); if (n) draft.name = n; }
+}
+function renderNewDialIn(existing){
+  if (!draft || draft.id !== (existing ? existing.id : null)) draft = draftFrom(existing);
+  syncDraft();
+  const tiles = (items, key, val) => items.map(t =>
+    `<button class="tile" type="button" data-${key}="${esc(t)}" aria-pressed="${t===val}"><span>${esc(t)}</span>${t===val?ICON.radio:""}</button>`).join("");
+  $("#main").innerHTML = `<div class="form">
+    <h1>${existing ? "Edit dial-in" : "New dial-in"}</h1>
+    <div class="fsec">
+      <p class="eyebrow">Printer</p>
+      <div class="tiles">${tiles(MODELS.filter(m => m !== "Other"), "model", draft.model)}</div>
+      <div><button class="linkbtn ${draft.model==="Other"?"":"quiet"}" type="button" id="otherModel" aria-pressed="${draft.model==="Other"}">Other printer…</button></div>
+      <div class="inline">
+        <label for="nozzleSel">Nozzle</label>
+        <span class="select-wrap"><select id="nozzleSel" class="dialin-select mono">${NOZZLES.map(n=>`<option value="${n}" ${+draft.nozzle===n?"selected":""}>${n} mm</option>`).join("")}</select>${ICON.down}</span>
+        <span class="pair"><label for="tagIn">Tag</label><input type="text" id="tagIn" class="mono" maxlength="18" value="${esc(draft.tag)}" placeholder="MK4S #2"></span>
+      </div>
+    </div>
+    <div class="fsec">
+      <p class="eyebrow">Material</p>
+      <div class="tiles">${tiles(MATERIALS.map(m=>m[0]).concat(["Other…"]), "material", draft.material)}</div>
+      ${draft.material==="Other…"?`<div class="inline"><label for="otherIn">Material</label><input type="text" id="otherIn" class="grow" value="${esc(draft.other)}" placeholder="filament name"></div>`:""}
+      <div class="inline"><label for="spoolIn">Spool</label><input type="text" id="spoolIn" class="grow" value="${esc(draft.spool)}" placeholder="batch or colour, optional"></div>
+    </div>
+    <div class="fsec">
+      <p class="eyebrow">Preset</p>
+      <div class="inline"><label for="presetIn">Save as</label><input type="text" id="presetIn" class="mono grow" value="${esc(draft.presetName)}"></div>
+      <p class="note" style="margin:0">Written to PrusaSlicer when you choose Save preset, at the end or any time before.</p>
+    </div>
+    <details class="names" ${draft.model==="Other"?"open":""}>
+      <summary>${ICON.right}<span>PrusaSlicer names</span></summary>
+      <div class="fields">
+        <div class="field"><label for="nameIn">PrusaSlicer printer name<small>as PrusaSlicer shows it; DATA lines are matched on it</small></label><input type="text" id="nameIn" spellcheck="false" value="${esc(draft.name)}"></div>
+        <div class="field"><label for="layerIn">Layer height</label><div class="in"><input type="number" id="layerIn" step="0.05" value="${draft.layer}"><span class="unit">mm</span></div></div>
+        <div class="field"><label for="densIn">Filament density</label><div class="in"><input type="number" id="densIn" step="0.001" value="${draft.density}"><span class="unit">g/cm³</span></div></div>
+        <div class="field"><label for="multIn">Current extrusion multiplier<small>from the preset before dialing in</small></label><div class="in"><input type="number" id="multIn" step="0.0001" value="${draft.mult}"></div></div>
+      </div>
+    </details>
+    <div class="formrow">
+      ${existing?`<div class="left"><button class="linkbtn quiet" type="button" id="delDial">Delete dial-in</button>${existing.baseline?`<button class="linkbtn quiet" type="button" id="resetBaseline">Reset baseline</button>`:""}</div>`:""}
+      <button class="btn lg" type="button" id="formCancel">Cancel</button>
+      <button class="btn lg primary" type="button" id="formGo"><span>${existing?"Save":"Start with step 0"}</span>${ICON.right}</button>
+    </div>
+  </div>`;
+  const again = () => renderNewDialIn(existing);
+  $("#main").querySelectorAll("[data-model]").forEach(el => el.addEventListener("click", () => { draft.model = el.dataset.model; again(); }));
+  $("#main").querySelectorAll("[data-material]").forEach(el => el.addEventListener("click", () => {
+    draft.material = el.dataset.material;
+    if (draft.material !== "Other…") draft.density = materialDensity(draft.material);
+    again();
   }));
-  $("#delPrinter").addEventListener("click", () => {
-    if (state.printers.length === 1) { toast("Keep at least one printer"); return; }
-    if (!confirm(`Remove ${p.name} and its measurements?`)) return;
-    state.printers = state.printers.filter(x => x.id !== p.id); state.active = state.printers[0].id; state.step = "temp"; save(); render();
+  $("#otherModel").addEventListener("click", () => { draft.model = "Other"; again(); const n = $("#nameIn"); if (n) n.focus(); });
+  $("#nozzleSel").addEventListener("change", e => { draft.nozzle = +e.target.value; syncDraft(); const n = $("#nameIn"); if (n && !draft.nameTouched) n.value = draft.name; });
+  $("#tagIn").addEventListener("input", e => { draft.tag = e.target.value; syncDraft(); if (!draft.presetTouched) $("#presetIn").value = draft.presetName; });
+  const oi = $("#otherIn"); if (oi) oi.addEventListener("input", e => { draft.other = e.target.value; syncDraft(); if (!draft.presetTouched) $("#presetIn").value = draft.presetName; });
+  $("#spoolIn").addEventListener("input", e => { draft.spool = e.target.value; });
+  $("#presetIn").addEventListener("input", e => { draft.presetName = e.target.value; draft.presetTouched = true; });
+  $("#nameIn").addEventListener("input", e => { draft.name = e.target.value; draft.nameTouched = true; });
+  $("#layerIn").addEventListener("input", e => { draft.layer = +e.target.value || 0; });
+  $("#densIn").addEventListener("input", e => { draft.density = +e.target.value || 0; });
+  $("#multIn").addEventListener("input", e => { draft.mult = +e.target.value || 0; });
+  $("#formCancel").addEventListener("click", () => { const back = existing ? editReturn : "welcome"; draft = null; state.step = back; render(); });
+  $("#formGo").addEventListener("click", () => commitDraft(existing));
+  const del = $("#delDial");
+  if (del) del.addEventListener("click", () => {
+    if (state.printers.length === 1) { toast("Keep at least one dial-in"); return; }
+    if (!confirm(`Remove ${existing.filament} · ${existing.tag} and its measurements?`)) return;
+    state.printers = state.printers.filter(x => x.id !== existing.id);
+    state.active = state.printers[0].id; state.step = "welcome"; draft = null; save(); render();
   });
+  const rb = $("#resetBaseline");
+  if (rb) rb.addEventListener("click", () => { existing.baseline = null; existing.baselineStep = null; existing.baselineWarning = null; existing.lastSnapshot = null; save(); again(); toast("Baseline cleared; the next run sets it"); });
+}
+function commitDraft(existing){
+  const tag = (draft.tag || "").trim();
+  if (!tag) { toast("The tag is required"); const t = $("#tagIn"); if (t) t.focus(); return; }
+  // the tag is how a DATA line tells two dial-ins on one printer apart, so it must be unique
+  if (state.printers.some(x => x.tag === tag && x.id !== (existing ? existing.id : null))) {
+    toast("Another dial-in already uses the tag " + tag); const t = $("#tagIn"); if (t) t.focus(); return;
+  }
+  const material = draftMaterial().trim() || "Prusament PETG";
+  const name = (draft.name || "").trim() || psName(draft.model, draft.nozzle) || (material + " " + tag);
+  const p = existing || blankPrinter(name, tag);
+  p.name = name; p.tag = tag; p.model = draft.model; p.nozzle = +draft.nozzle || 0.4;
+  p.filament = material; p.spool = (draft.spool || "").trim();
+  p.presetName = (draft.presetName || "").trim() || presetDefault(material, tag);
+  p.layer = +draft.layer || 0.2; p.density = +draft.density || 1.27; p.baseMultiplier = +draft.mult || 1.0;
+  p.example = false;
+  if (!existing) { state.printers.push(p); state.active = p.id; state.step = STEPS[0].id; }
+  else { state.active = p.id; state.step = editReturn; }
+  draft = null; save(); render(); window.scrollTo({top:0});
+}
+
+// ---------- save preset / export ----------
+function openDialog(dlg){ if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", ""); }
+function closeDialog(dlg){ dlg.close ? dlg.close() : dlg.removeAttribute("open"); }
+function openExportJson(){
+  $("#exportTitle").textContent = "Export sheet";
+  $("#exportNote").textContent = "Save this as petg-dialin-sheet.json. Import it on another machine.";
+  $("#exportPreset").hidden = true;
+  $("#exportText").value = JSON.stringify(state, null, 2);
+  $("#exportCopy").textContent = "Copy JSON";
+  $("#exportCopy").disabled = false;
+  $("#exportWrite").hidden = true;
+  $("#exportWrite").disabled = false;
+  openDialog($("#exportDialog"));
+}
+function openSavePreset(){
+  const p = printer();
+  const fresh = state.printers.every(x => x.example);   // nothing dialed in yet: nothing to write
+  $("#exportTitle").textContent = "Save preset";
+  const pl = $("#exportPreset");
+  pl.hidden = fresh || !p.presetName;
+  pl.textContent = "Save the filament preset in PrusaSlicer as: " + (p.presetName || "");
+  $("#exportNote").textContent = fresh
+    ? "Start a dial-in first."
+    : helper
+      ? "Write it, then Plugins › Filament Dial-In › Tools › Apply values from profile.lua."
+      : "Save as profile.lua in the bundle folder, then Plugins › Filament Dial-In › Tools › Apply values from profile.lua.";
+  $("#exportText").value = fresh ? "" : profileLua();
+  $("#exportCopy").textContent = "Copy";
+  $("#exportCopy").disabled = fresh;
+  $("#exportWrite").hidden = !helper;
+  $("#exportWrite").disabled = fresh;
+  openDialog($("#exportDialog"));
 }
 function renderCompare(){
-  const rows = state.printers.map(p => { const r = barResult(p); const m = finalMultiplier(p); const n = slabNominal(p); const ms = num(sd(p,"slab").measured);
-    return `<tr><td>${esc(p.name)}<br><span class="tag" style="font-family:var(--mono);font-size:12px;color:var(--ink-3)">${esc(p.tag)}${p.example?" · example":""}</span></td><td>${num(sd(p,"temp").chosen)?f(sd(p,"temp").chosen,0):"—"}</td><td>${flowChosen(p)?f(flowChosen(p),0)+"%":"—"}</td><td>${ms?((ms/n.g-1)*100>0?"+":"")+f((ms/n.g-1)*100,2)+"%":"—"}</td><td>${m?f(m,4):"—"}</td><td>${volLimit(p)?f(volLimit(p),1):"—"}</td><td>${num(sd(p,"pa").chosen)!==null?f(sd(p,"pa").chosen,3):"—"}</td><td>${num(sd(p,"cooling").chosen)!==null?f(sd(p,"cooling").chosen,0)+"%":"—"}</td><td>${num(sd(p,"overlap").chosen)?f(sd(p,"overlap").chosen,0)+"%":"—"}</td><td>${r.g!==null?f(-r.g,3):"—"}</td><td>${r.s!==null?f(r.s*100,2)+"%":"—"}</td><td>${STEPS.filter(s=>sd(p,s.id).done).length}/${STEPS.length}</td></tr>`; }).join("");
-  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>
-    <div class="sheet-head"><h1>Compare printers</h1><div class="who">${state.printers.length} printer${state.printers.length===1?"":"s"}</div></div>
-    <p class="purpose">The spread between machines is the point. Temperature and multiplier normally differ by a few units; if the volumetric limit differs a lot, one hotend is not what its profile claims.</p>
-    <section class="block compare"><table><thead><tr><th>Printer</th><th>Temp °C</th><th>M221</th><th>Slab error</th><th>Multiplier</th><th>Max mm³/s</th><th>PA</th><th>Fan</th><th>Overlap</th><th>XY comp mm</th><th>Shrink</th><th>Steps</th></tr></thead><tbody>${rows}</tbody></table></section>
-    <p class="note">Export JSON to keep a copy or move the sheet to another machine. Values live in this browser only.</p>`;
+  const ps = state.printers;
+  const slabErr = p => { const n = slabNominal(p), ms = num(sd(p,"slab").measured);
+    return ms ? ((ms/n.g-1)*100>0?"+":"") + f((ms/n.g-1)*100,2) + " %" : null; };
+  const COMPARE_ROWS = [
+    ["Temperature",      p => num(sd(p,"temp").chosen) ? f(sd(p,"temp").chosen,0) + " °C" : null],
+    ["Flow M221",        p => flowChosen(p) ? f(flowChosen(p),0) + " %" : null],
+    ["Slab error",       slabErr],
+    ["Multiplier",       p => finalMultiplier(p) ? f(finalMultiplier(p),4) : null],
+    ["Max flow",         p => volLimit(p) ? f(volLimit(p),1) + " mm³/s" : null],
+    ["Pressure advance", p => num(sd(p,"pa").chosen)!==null ? f(sd(p,"pa").chosen,3) : null],
+    ["Fan",              p => num(sd(p,"cooling").chosen)!==null ? f(sd(p,"cooling").chosen,0) + " %" : null],
+    ["Overlap",          p => num(sd(p,"overlap").chosen) ? f(sd(p,"overlap").chosen,0) + " %" : null],
+    ["XY compensation",  p => barResult(p).g!==null ? f(-barResult(p).g,3) + " mm" : null],
+    ["Shrinkage",        p => barResult(p).s!==null ? f(barResult(p).s*100,2) + " %" : null],
+    ["Steps done",       p => doneCount(p) + " of " + PROGRESS.length]
+  ];
+  const cell = v => `<td>${v === null || v === undefined || v === "" ? `<span class='na'>—</span>` : esc(String(v))}</td>`;
+  const head = ps.map(p => `<th><span class="nm">${esc(p.filament)}</span><span class="tg">${esc(p.tag)}</span></th>`).join("");
+  const body = COMPARE_ROWS.map(([label, get]) => `<tr><th scope="row" class="lbl">${label}</th>${ps.map(p => cell(get(p))).join("")}</tr>`).join("");
+  $("#main").innerHTML = `
+    <div class="step-head"><div class="t"><h1>Compare</h1>
+      <div class="who">${ps.length} dial-in${ps.length===1?"":"s"}</div></div>
+      <p class="lede">Every dial-in's chosen values side by side.</p></div>
+    <div class="cards one">
+      <section class="card"><div class="compare">
+        <table><thead><tr><th class="lbl"></th>${head}</tr></thead><tbody>${body}</tbody></table>
+      </div></section>
+    </div>`;
 }
 const PLAN_SESSIONS = [
-  ["A","Temperature tower (step 1)"],
-  ["B","Volumetric flow comb (step 2)"],
-  ["C","Pressure advance line (step 3)"],
-  ["D","Flow staircase, one pass (step 4)"],
-  ["E","Solid slab, weighed (step 5)"],
-  ["F","Cooling tower (step 6)"],
-  ["G","Infill overlap, shrinkage bar and fit gauge (steps 7, 8, 9) on one plate, printed simultaneously — press A to arrange them; there is no need to print them one after another"],
-  ["H","Small-feature tower alone (step 10)"],
-  ["I","Reference coupon, plus the stringing tower if this machine needs it (steps 11, 12)"]
+  ["A","Temperature tower — step 1"],
+  ["B","Volumetric flow comb — step 2"],
+  ["C","Pressure advance line — step 3"],
+  ["D","Flow staircase, one pass — step 4"],
+  ["E","Solid slab, weighed — step 5"],
+  ["F","Cooling tower — step 6"],
+  ["G","Overlap, shrinkage bar and fit gauge, one plate — steps 7–9"],
+  ["H","Small-feature tower — step 10"],
+  ["I","Coupon, plus stringing if needed — steps 11, 12"]
 ];
 // ---------- gate map (Print plan section C) ----------
 // The graph is drawn from GATES and STEPS, so it cannot disagree with the gates.
@@ -657,9 +1037,9 @@ function gmWrap(text, max){
 }
 function gateMapSvg(p){
   const cols = gateColumns();
-  const NW = 142, NH = 58, CG = 54, RG = 16, PAD = 16, LH = 13;
+  const NW = 140, NH = 56, CG = 40, RG = 16, PAD = 8, LH = 14;
   const pitchX = NW + CG, pitchY = NH + RG;
-  const top = PAD + 22;
+  const top = PAD + 20;
   let maxRows = 1; for (const c of cols) if (c.length > maxRows) maxRows = c.length;
   const band = maxRows * pitchY - RG, pos = {};
   cols.forEach((c, ci) => { const y0 = top + (band - (c.length * pitchY - RG)) / 2;
@@ -698,59 +1078,62 @@ function gateMapSvg(p){
   return `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gate map: which step feeds which, for ${esc(p.tag)}">${out.join("")}</svg>`;
 }
 const PLAN_WAVES = [
-  ["1","0, then 1 (temperature tower)","0, then wait (or its own temperature tower if strict)","0, then wait (or its own temperature tower if strict)"],
+  ["1","0, then 1 (temperature)","0, then wait","0, then wait"],
   ["2","2 (volumetric)","wait","wait"],
-  ["3","3 (PA)","3 (PA), with A's temperature and volumetric limit copied into the preset","3 (PA), with A's temperature and volumetric limit copied into the preset"],
+  ["3","3 (PA)","3 (PA), A's values copied","3 (PA), A's values copied"],
   ["4","4 (flow)","4 (flow)","4 (flow)"],
   ["5","5 (slab)","5 (slab)","5 (slab)"],
-  ["6","6 (cooling, shared later)","plate 7 + 8 + 9","12 (stringing, shared)"],
-  ["7","plate 7 + 8 + 9","10 (small-feature, needs A's cooling result)","plate 7 + 8 + 9"],
+  ["6","6 (cooling)","plate 7 + 8 + 9","12 (stringing)"],
+  ["7","plate 7 + 8 + 9","10 (small features)","plate 7 + 8 + 9"],
   ["8","11 (coupon)","11 (coupon)","11 (coupon)"],
-  ["9","13 (apply, own profile entry)","13 (apply, own profile entry)","13 (apply, own profile entry)"]
+  ["9","13 (apply)","13 (apply)","13 (apply)"]
 ];
 function gateMapSection(){
   const p = planPrinter();
-  const opts = state.printers.map(x => `<option value="${x.id}" ${x.id===p.id?"selected":""}>${esc(x.name)}${x.example?" (example)":""}</option>`).join("");
+  const opts = state.printers.map(x => `<option value="${x.id}" ${x.id===p.id?"selected":""}>${esc(x.filament)} · ${esc(x.tag)}</option>`).join("");
   const waveRows = PLAN_WAVES.map(([w,a,b,c]) => `<tr><td>Wave ${w}</td><td>${esc(a)}</td><td>${esc(b)}</td><td>${esc(c)}</td></tr>`).join("");
-  return `<section class="block" style="margin-top:20px"><h2><span class="k">C</span>Gate map</h2>
-    <p class="note" style="margin:0 0 12px">Drawn from the gates themselves, so it always matches the Blocked column above. An arrow means the step it points at needs that result in the preset before it is printed. Each column is one wave: everything in a wave can be printed at the same time, on as many machines as you have.</p>
-    <div class="gmap-head"><label for="gmapPrinter">State shown for</label><select id="gmapPrinter">${opts}</select></div>
+  return `<section class="card">
+    <div class="gm-top"><p class="eyebrow">Gate map</p>
+      <span class="select-wrap"><select class="dialin-select" id="gmapPrinter" aria-label="Dial-in shown">${opts}</select>${ICON.down}</span></div>
     <div class="gmap" id="gmapBox">${gateMapSvg(p)}</div>
     <div class="gmap-legend">
       <span><span class="sw done"></span>done</span>
       <span><span class="sw ready"></span>ready now</span>
       <span><span class="sw"></span>blocked</span>
-      <span><span class="tg">SHARED</span>result can be copied to a printer of the same model</span>
-      <span>unmarked: every machine runs it itself</span>
+      <span><span class="tg">SHARED</span>can be copied</span>
     </div>
-    <p class="note">Sharing is advice, not a rule. Two printers of the same model, with the same hotend, nozzle and fan duct, land close enough that one machine's temperature, volumetric limit, cooling, shrinkage, small-feature and stringing results can be copied to its siblings; but identical machines still differ in thermistor and fan tolerances, so a strict fleet runs everything per printer, and any printer whose parts come out different from its siblings should redo the shared steps itself. The unmarked steps — nozzle clean, PA, flow, slab, overlap, fit gauge, coupon and apply — are per machine either way.</p>
-    <p class="eyebrow" style="margin:18px 0 8px">Three identical printers, one spool each</p>
-    <div class="compare gmap-tbl"><table><thead><tr><th>Wave</th><th>Printer A</th><th>Printer B</th><th>Printer C</th></tr></thead><tbody>${waveRows}</tbody></table></div>
-    <p class="note">That is nine sessions on the longest path instead of thirteen in series, and the serial chain from 0 to 5 cannot be shortened because each of those steps needs the previous result in the preset: one variable at a time. The wave numbers here are printing sessions, so wave 1 packs steps 0 and 1 into one sitting; the graph above numbers its columns by dependency depth.</p></section>`;
+    <p class="note">Shared steps can be copied between printers of the same model; strict fleets run everything per printer.</p>
+    <div class="gm-sub">
+      <p class="eyebrow">Three identical printers, one spool each</p>
+      <div class="compare gmap-tbl"><table><thead><tr><th>Wave</th><th>Printer A</th><th>Printer B</th><th>Printer C</th></tr></thead><tbody>${waveRows}</tbody></table></div>
+      <p class="gm-note">Nine sessions on the longest path instead of thirteen in series.</p>
+    </div></section>`;
 }
 function renderPlan(){
   const rows = state.printers.map(p => {
-    const ready = [], done = [], blocked = [];
+    const ready = [], blocked = [];
     for (const st of STEPS) {
-      if (stepDone(p, st.id)) { done.push(st.n); continue; }
+      if (stepDone(p, st.id)) continue;
       const b = blockedBy(p, st.id);
       if (b.length) blocked.push(st.n + " needs " + b.map(s => s.n).join(" + "));
-      else ready.push(st.n + ". " + st.name);
+      else ready.push(st.n + " " + st.short);
     }
-    return `<tr><td>${esc(p.name)}<br><span class="sub">${esc(p.tag)}${p.example?" · example":""}</span></td>
-      <td>${ready.length?ready.map(esc).join("<br>"):"—"}</td>
-      <td>${done.length?esc(done.join(", ")):"—"}</td>
-      <td>${blocked.length?blocked.map(esc).join("<br>"):"—"}</td></tr>`;
+    return `<tr><td><span class="nm">${esc(p.filament)}</span><span class="tg">${esc(p.tag)}</span></td>
+      <td>${ready.length?esc(ready.join(", ")):"<span class='na'>all done</span>"}</td>
+      <td>${blocked.length?esc(blocked.slice(0,3).join(", "))+(blocked.length>3?` <span class='na'>+${blocked.length-3} more</span>`:""):"<span class='na'>—</span>"}</td></tr>`;
   }).join("");
-  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>
-    <div class="sheet-head"><h1>Print plan</h1><div class="who">${state.printers.length} printer${state.printers.length===1?"":"s"}</div></div>
-    <p class="purpose">What each printer can print next, so several machines run in parallel. A step is ready when every step it depends on is ticked done for that printer; a blocked step lists the step numbers whose results it needs. Blocking is advice: you can still run and edit any step.</p>
-    <section class="block plan compare"><h2><span class="k">A</span>Per printer</h2><table><thead><tr><th>Printer</th><th>Ready now</th><th>Done</th><th>Blocked</th></tr></thead><tbody>${rows}</tbody></table></section>
-    <section class="block" style="margin-top:20px"><h2><span class="k">B</span>Batching</h2>
-      <p class="note" style="margin:0 0 10px">Do step 0, the nozzle clean, once per printer before session A. One session is one plate unless it says otherwise.</p>
-      <ul class="plan-list">${PLAN_SESSIONS.map(([k,t])=>`<li><span class="s">${k}</span><span>${esc(t)}</span></li>`).join("")}</ul></section>
-    <p class="note">Sessions are ordered so that each one has the results it needs from the one before. Printers are independent: printer 2 can be in session B while printer 1 is in session E.</p>
-    ${gateMapSection()}`;
+  $("#main").innerHTML = `
+    <div class="step-head"><div class="t"><h1>Print plan</h1>
+      <div class="who">${state.printers.length} dial-in${state.printers.length===1?"":"s"}</div></div>
+      <p class="lede">What each printer can print next.</p></div>
+    <div class="cards one">
+      <section class="card"><p class="eyebrow">Next</p>
+        <div class="compare plan"><table><thead><tr><th>Dial-in</th><th>Ready now</th><th>Blocked</th></tr></thead><tbody>${rows}</tbody></table></div></section>
+      ${gateMapSection()}
+      <section class="card"><p class="eyebrow">Batching</p>
+        <ul class="plan-list">${PLAN_SESSIONS.map(([k,t])=>`<li><span class="s">${k}</span><span>${esc(t)}</span></li>`).join("")}</ul>
+        <p class="note">Step 0 once per printer, before session A.</p></section>
+    </div>`;
   const sel = $("#gmapPrinter");
   if (sel) sel.addEventListener("change", () => { planGraphPrinter = sel.value; const box = $("#gmapBox"); if (box) box.innerHTML = gateMapSvg(planPrinter()); });
 }
@@ -772,12 +1155,27 @@ function profileEntry(p){
   if (foot !== null) e.push(["elefant_foot_compensation", f(foot,2)]);
   return e;
 }
+function luaComment(s){ return String(s ?? "").replace(/[\r\n]+/g, " "); }
+// One entry per PrusaSlicer printer name: the file is keyed on that name, so two dial-ins on
+// the same printer cannot both be written. The active dial-in wins for its printer; for the
+// others the dial-in with the most steps done is the one worth applying.
+function profileChoices(){
+  const act = printer(), by = new Map();
+  for (const p of state.printers) {
+    if (p.example) continue;
+    const cur = by.get(p.name);
+    if (!cur) { by.set(p.name, p); continue; }
+    if (cur === act) continue;
+    if (p === act || doneCount(p) > doneCount(cur)) by.set(p.name, p);
+  }
+  return Array.from(by.values());
+}
 function profileLua(){
   const lines = ["-- profile.lua: written by the PETG Dial-In Sheet on " + new Date().toISOString().slice(0,16).replace("T"," ") + ".",
     "-- Keyed by printer name as PrusaSlicer shows it. Read by every command for the tag,",
     "-- and by Tools > Apply values from profile.lua for the preset values.", "return {"];
-  for (const p of state.printers) {
-    if (p.example) continue;
+  for (const p of profileChoices()) {
+    lines.push("  -- " + luaComment(p.filament) + " · " + luaComment(p.tag) + "; save the filament preset as: " + luaComment(p.presetName));
     lines.push("  [" + luaStr(p.name) + "] = {");
     for (const [k, v] of profileEntry(p)) lines.push("    " + k + " = " + v + ",");
     lines.push("  },");
@@ -796,29 +1194,44 @@ async function detectHelper(){
   if (!/^https?:/.test(location.protocol)) return;
   try { const r = await fetch("/api/status", {cache:"no-store"}); const j = await r.json(); if (j.helper) { helper = j; startLog(); document.body.classList.add("has-log"); render(); } } catch(e) {}
 }
+// Top-bar cluster: one dot + "Helper", the two everyday actions, and a popover
+// that holds the four status readouts and the rarer actions. Everything the old
+// bar spelled out inline now lives behind the dot.
 function helperBar(){
-  if (!helper) return "";
+  if (!helper) return `<div class="hcluster"><span class="hchip off"><span class="hdot"></span>Helper off</span></div>`;
   const h = helper;
-  const dot = ok => `<span class="dot ${ok?"done":"partial"}"></span>`;
-  const commit = h.bundle_installed_commit ? " · " + esc(h.bundle_installed_commit) : "";
-  return `<div class="helper">
-    <span class="st">${dot(h.plugins_dir_exists)} plugins ${esc(h.plugins_dir || "not found")}</span>
-    <span class="st">${dot(!!h.bundle_installed_version)} bundle ${h.bundle_installed_version ? "v"+esc(h.bundle_installed_version) + commit + (h.bundle_installed_version!==h.bundle_source_version?" (source v"+esc(h.bundle_source_version)+")":"") : "not installed"}</span>
-    <span class="st">${dot(h.profile_exists)} profile.lua ${h.profile_exists?"saved":"none"}</span>
-    <span class="st">${dot(h.running)} PrusaSlicer ${h.running?"running":(h.prusaslicer_exists?"ready":"not found")}</span>
-    <span class="grow"></span>
-    <button class="btn small" type="button" data-helper="paths">Paths…</button>
-    <button class="btn small" type="button" data-helper="update" title="Download the current bundle from GitHub and install it">Load latest plugin</button>
-    <button class="btn small" type="button" data-helper="install">Install from this checkout</button>
-    <button class="btn small" type="button" data-helper="profile">Save profile.lua</button>
-    <button class="btn small primary" type="button" data-helper="launch" ${h.running?"disabled":""}>Launch PrusaSlicer</button>
-    ${h.looks_like_2x?`<span class="st" style="flex-basis:100%;color:var(--warn)">This PrusaSlicer path does not look like a 3.0 alpha. Use Paths… to point at the alpha's folder and its plugins folder (Plugins › Show User Plugins Folder inside the alpha).</span>`:""}
+  const installed = !!h.bundle_installed_version;
+  const green = installed && !!h.running;
+  const row = (ok, label, value) => `<div class="hrow"><span class="hdot ${ok?"ok":"warn"}"></span><span>${esc(label)}</span><span class="v">${esc(value)}</span></div>`;
+  const plugin = installed
+    ? "v" + h.bundle_installed_version + (h.bundle_installed_commit ? " · " + h.bundle_installed_commit : "")
+    : "not installed";
+  const slicer = h.running ? "running" : (h.prusaslicer_exists ? "ready" : "not found");
+  return `<div class="hcluster" id="hcluster">
+    <button class="hchip" type="button" data-helper="toggle" aria-expanded="false" aria-controls="helperPop"><span class="hdot ${green?"ok":"warn"}"></span>Helper</button>
+    <button class="btn primary hbtn" type="button" data-helper="update">Load latest</button>
+    <button class="btn hbtn" type="button" data-helper="paths">Paths</button>
+    <div class="hpop" id="helperPop" role="group" aria-label="Helper status" hidden>
+      ${row(installed, "Plugin", plugin)}
+      ${row(!!h.running, "PrusaSlicer", slicer)}
+      ${row(!!h.profile_exists, "profile.lua", h.profile_exists ? "saved" : "none")}
+      ${row(true, "Helper", "port " + esc(location.port || "8765"))}
+      ${h.looks_like_2x?`<p class="hwarn">This PrusaSlicer is not a 3.0 alpha. Set it in Paths.</p>`:""}
+      <div class="hacts">
+        <button class="btn hpb" type="button" data-helper="update">Load latest</button>
+        <button class="btn hpb" type="button" data-helper="paths">Paths</button>
+        <button class="btn" type="button" data-helper="launch" ${h.running?"disabled":""}>Launch PrusaSlicer</button>
+        <button class="btn" type="button" data-helper="install">Install from checkout</button>
+      </div>
+    </div>
   </div>`;
 }
 async function helperAction(what, el){
   try {
-    if (what === "paths") { openPaths(); return; }
-    if (what === "update") { await loadLatest(el); return; }
+    if (what === "toggle") { toggleHelperPop(); return; }
+    if (what === "paths") { closeHelperPop(); openPaths(); return; }
+    if (what === "update") { closeHelperPop(); await loadLatest(el); return; }
+    closeHelperPop();
     if (what === "install") { await api("/api/install", {}); toast("Bundle installed from this checkout"); }
     else if (what === "profile") { await api("/api/profile", { lua: profileLua() }); toast("profile.lua saved into the plugin"); }
     else if (what === "launch") { await api("/api/launch", {}); toast("PrusaSlicer launched"); }
@@ -850,16 +1263,28 @@ async function loadLatest(btn){
 }
 function openPaths(){
   const dlg = $("#pathsDialog");
-  $("#pathPrusa").value = helper.prusaslicer || ""; $("#pathPlugins").value = helper.plugins_dir || "";
+  $("#pathPrusa").value = (helper && helper.prusaslicer) || ""; $("#pathPlugins").value = (helper && helper.plugins_dir) || "";
   if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
 }
+function closeHelperPop(){
+  const p = $("#helperPop"); if (p) p.hidden = true;
+  const c = $("#hcluster .hchip"); if (c) c.setAttribute("aria-expanded", "false");
+}
+function toggleHelperPop(){
+  const p = $("#helperPop"); if (!p) return;
+  p.hidden = !p.hidden;
+  const c = $("#hcluster .hchip"); if (c) c.setAttribute("aria-expanded", p.hidden ? "false" : "true");
+}
+document.addEventListener("click", e => { if (!e.target.closest("#hcluster")) closeHelperPop(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeHelperPop(); });
 function startLog(){
   const drawer = document.createElement("div"); drawer.className = "log"; drawer.id = "logDrawer";
-  drawer.innerHTML = `<div class="bar" id="logBar"><span>PrusaSlicer output</span><span class="grow"></span><span id="logCount">0</span><span id="logToggle">hide</span></div><ol id="logList"></ol>`;
+  drawer.innerHTML = `<div class="bar" id="logBar"><span class="lgt">Log</span><span class="lgn" id="logCount">0</span><span class="grow"></span><button class="btn" id="logClear" type="button">Clear</button></div><ol id="logList"></ol>`;
   document.body.appendChild(drawer);
   try { if (localStorage.getItem(KEY + ":logmin") === "1") drawer.classList.add("min"); } catch(e){}
-  $("#logBar").addEventListener("click", () => { drawer.classList.toggle("min"); $("#logToggle").textContent = drawer.classList.contains("min") ? "show" : "hide"; try { localStorage.setItem(KEY + ":logmin", drawer.classList.contains("min") ? "1" : "0"); } catch(e){} });
+  $("#logBar").addEventListener("click", () => { drawer.classList.toggle("min"); try { localStorage.setItem(KEY + ":logmin", drawer.classList.contains("min") ? "1" : "0"); } catch(e){} });
   let n = 0;
+  $("#logClear").addEventListener("click", e => { e.stopPropagation(); $("#logList").innerHTML = ""; n = 0; $("#logCount").textContent = "0"; });
   const es = new EventSource("/api/log?since=0");
   es.onmessage = e => {
     const ev = JSON.parse(e.data); if (ev.id <= helperSeen) return; helperSeen = ev.id;
@@ -870,12 +1295,24 @@ function startLog(){
     if (ev.kind === "helper" && /launched|exited|installed|loaded|wrote/.test(ev.text)) fetch("/api/status").then(r=>r.json()).then(j=>{ helper=j; renderHelperBar(); }).catch(()=>{});
   };
 }
-function renderHelperBar(){ const el = $("#helperBar"); if (el) el.outerHTML = `<div id="helperBar">${helperBar()}</div>`; }
+function renderHelperBar(){ const el = $("#helperBar"); if (el) el.innerHTML = helperBar(); }
+let unmatchedData = "";
 function onData(d){
   if (!d || !d.printer) return;
-  let p = state.printers.find(x => x.name === d.printer);
-  if (!p) { p = blankPrinter(d.printer, d.tag || d.printer.slice(0, 12)); state.printers.push(p); toast("Added " + d.printer + " from PrusaSlicer"); }
-  else if (p.example) { p.steps = {}; p.example = false; if (d.tag) p.tag = d.tag; toast("Replaced the example's numbers with your " + d.printer); }
+  // The tag is engraved on every test part and is unique, so it decides first; the printer
+  // name can be shared by two dial-ins, and then a real one beats the example.
+  let p = null;
+  if (d.tag) {
+    const t = String(d.tag).trim(), tl = t.toLowerCase();
+    p = state.printers.find(x => x.tag === t) || state.printers.find(x => String(x.tag || "").trim().toLowerCase() === tl);
+  }
+  if (!p) p = state.printers.find(x => x.name === d.printer && !x.example) || state.printers.find(x => x.name === d.printer);
+  if (!p) {
+    if (unmatchedData !== d.printer) { unmatchedData = d.printer; toast("DATA from " + d.printer + " — no dial-in with that printer or tag"); }
+    return;
+  }
+  unmatchedData = "";
+  if (p.example) { p.steps = {}; p.example = false; if (d.tag) p.tag = d.tag; toast("Replaced the example's numbers with your " + d.printer); }
   else if (!p.tag && d.tag) p.tag = d.tag;
   state.active = p.id;
   const st = sd(p, d.step);
@@ -886,7 +1323,7 @@ function onData(d){
       const diffs = [];
       for (const [k, label] of [["layer_height","layer height"],["nozzle","nozzle"],["perimeters","perimeters"],["top","top solid layers"],["bottom","bottom solid layers"]])
         if (base[k] != null && p.baseline[k] != null && Math.abs(base[k] - p.baseline[k]) > 1e-6) diffs.push(`${label} ${p.baseline[k]} → ${base[k]}`);
-      p.baselineWarning = diffs.length ? `The printer or print profile changed since step ${stepNumber(p.baselineStep)}: ${diffs.join(", ")}. Every step must use the same printer, nozzle, layer height and print profile; change one variable at a time. Re-run this step, or reset the baseline in Printer details.` : null;
+      p.baselineWarning = diffs.length ? `The printer or print profile changed since step ${stepNumber(p.baselineStep)}: ${diffs.join(", ")}. Every step must use the same printer, nozzle, layer height and print profile; change one variable at a time. Re-run this step, or reset the baseline under Edit.` : null;
       if (p.baselineWarning) toast("Profile changed since the earlier steps");
     }
     p.lastSnapshot = { step: d.step, p_temperature: d.p_temperature, p_extrusion_multiplier: d.p_extrusion_multiplier, p_max_volumetric_speed: d.p_max_volumetric_speed, p_pressure_advance: d.p_pressure_advance };
@@ -901,30 +1338,45 @@ function onData(d){
 }
 
 function render(){
+  renderTopbar();
   renderRail();
   const st = STEPS.find(s => s.id === state.step);
-  if (st) renderStep(st); else if (state.step === "printer") renderPrinter(); else if (state.step === "plan") renderPlan(); else renderCompare();
+  if (state.step === "welcome") renderWelcome();
+  else if (state.step === "new") renderNewDialIn(null);
+  else if (state.step === "edit") renderNewDialIn(printer());
+  else if (st) renderStep(st);
+  else if (state.step === "plan") renderPlan();
+  else renderCompare();
   save();
 }
 function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 1600); }
 
 // ---------- events ----------
 document.addEventListener("click", e => {
-  const pb = e.target.closest("[data-printer]"); if (pb) { state.active = pb.dataset.printer; render(); return; }
-  const sb = e.target.closest("[data-step]"); if (sb) { state.step = sb.dataset.step; render(); window.scrollTo({top:0}); return; }
+  const op = e.target.closest("[data-open]");
+  if (op) { state.active = op.dataset.open; draft = null; state.step = firstTodo(printer()); render(); window.scrollTo({top:0}); return; }
+  const sb = e.target.closest("[data-step]");
+  if (sb) {
+    const to = sb.dataset.step;
+    if (to === "edit") editReturn = STEPS.some(s => s.id === state.step) ? state.step : "welcome";
+    if (to !== "new" && to !== "edit") draft = null;
+    state.step = to; render(); window.scrollTo({top:0}); return;
+  }
   const go = e.target.closest("[data-go]"); if (go) { state.step = go.dataset.go; render(); window.scrollTo({top:0}); return; }
+  const ac = e.target.closest("[data-act]");
+  if (ac) {
+    const a = ac.dataset.act;
+    if (a === "preset") openSavePreset();
+    else if (a === "export") openExportJson();
+    else if (a === "reset" && confirm("Clear every dial-in and measurement in this browser?")) {
+      state = { printers:[examplePrinter()], active:"ex1", step:"welcome" }; draft = null; save(); render();
+    }
+    return;
+  }
   const hb = e.target.closest("[data-helper]"); if (hb) { helperAction(hb.dataset.helper, hb); return; }
-  const pc = e.target.closest("#profileCopy"); if (pc) { const t = $("#profileText"); navigator.clipboard && navigator.clipboard.writeText(t.value).then(()=>toast("Copied profile.lua")); return; }
 });
-$("#addPrinter").addEventListener("click", () => {
-  const name = prompt("Printer name as PrusaSlicer shows it", "Original Prusa MK4S 0.4 nozzle"); if (!name) return;
-  const tag = prompt("Short tag to engrave on parts", "MK4S #" + (state.printers.length + 1)) || name.slice(0, 12);
-  const p = blankPrinter(name.trim(), tag.trim()); state.printers.push(p); state.active = p.id; state.step = "printer"; render();
-});
-$("#exportBtn").addEventListener("click", () => {
-  const json = JSON.stringify(state, null, 2);
-  const dlg = $("#exportDialog"); $("#exportText").value = json;
-  if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+document.addEventListener("change", e => {
+  if (e.target.id === "dialinSelect") { state.active = e.target.value; draft = null; state.step = firstTodo(printer()); render(); window.scrollTo({top:0}); }
 });
 $("#exportCopy").addEventListener("click", () => {
   const ta = $("#exportText"); ta.select();
@@ -932,18 +1384,19 @@ $("#exportCopy").addEventListener("click", () => {
   if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(done, () => { document.execCommand("copy"); done(); });
   else { document.execCommand("copy"); done(); }
 });
-$("#exportClose").addEventListener("click", () => { const dlg = $("#exportDialog"); dlg.close ? dlg.close() : dlg.removeAttribute("open"); });
-$("#pathsClose").addEventListener("click", () => { const dlg = $("#pathsDialog"); dlg.close ? dlg.close() : dlg.removeAttribute("open"); });
+$("#exportWrite").addEventListener("click", async () => { await helperAction("profile"); closeDialog($("#exportDialog")); });
+$("#exportClose").addEventListener("click", () => closeDialog($("#exportDialog")));
+$("#pathsClose").addEventListener("click", () => closeDialog($("#pathsDialog")));
 $("#pathsSave").addEventListener("click", async () => {
-  try { await api("/api/config", { prusaslicer: $("#pathPrusa").value.trim(), plugins_dir: $("#pathPlugins").value.trim() }); toast("Paths saved"); const dlg = $("#pathsDialog"); dlg.close ? dlg.close() : dlg.removeAttribute("open"); render(); }
+  try { await api("/api/config", { prusaslicer: $("#pathPrusa").value.trim(), plugins_dir: $("#pathPlugins").value.trim() }); toast("Paths saved"); closeDialog($("#pathsDialog")); render(); }
   catch (e) { toast(e.message); }
 });
 $("#importFile").addEventListener("change", e => {
   const file = e.target.files[0]; if (!file) return;
-  file.text().then(t => { const s = JSON.parse(t); if (!s.printers) throw new Error("no printers"); state = migrate(s); state.step = state.step || "temp"; save(); render(); toast("Imported"); }).catch(() => toast("That file is not a dial-in sheet export"));
+  file.text().then(t => { const s = JSON.parse(t); if (!s.printers) throw new Error("no printers"); state = migrate(s); draft = null; save(); render(); toast("Imported"); })
+    .catch(() => toast("That file is not a dial-in sheet export"));
   e.target.value = "";
 });
-$("#resetBtn").addEventListener("click", () => { if (confirm("Clear every printer and measurement in this browser?")) { state = { printers:[examplePrinter()], active:"ex1", step:"temp" }; save(); render(); } });
 $("#railToggle").addEventListener("click", () => $("#rail").classList.toggle("collapsed"));
 if (window.matchMedia("(max-width:760px)").matches) $("#rail").classList.add("collapsed");
 
