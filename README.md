@@ -39,13 +39,14 @@ menu follows the procedure).
 
 | Menu entry | What it adds | What you read off it | What it feeds |
 | --- | --- | --- | --- |
+| 0. Nozzle clean before testing | Prusa's manual routine as first-layer G-code on a 20 mm anchor plate: heat, `M600` to swap to the cleaning material (nylon or PLA), purge it through, cool to that material's pull temperature, pause for the cold pull, `M600` back to the test filament, purge | The tip you pulled: a clean cast of the nozzle bore, no grit, flecks or crust | Nothing. It makes every step below measure the printer instead of the residue in it |
 | 1. Temperature tower | PrusaSlicer's own calibration model (80 × 10 mm base, 10 mm steps with bridges and overhangs), one `M104` per step, printed solid | Bridge sag, overhang fray, gloss, layer bonding | `temperature`, `first_layer_temperature` |
-| 2. Cooling tower | Square tower with an overhang wing per band and a slender pillar the head visits every layer, `M106` on every layer of a band, the preset's fan values pinned equal so the slicer's cooling logic stays quiet | The pillar first (fused or bulging layers = too little cooling), then the wings; lowest clean fan | `min_fan_speed`, `max_fan_speed` |
-| 3. Flow staircase (M221) | Staircase whose every tread is printed at its own `M221` value: pass 1 sweeps 80 to 120% in 5% steps, pass 2 sweeps 1% steps around the winner (OrcaSlicer's method, rebuilt for PrusaSlicer) | Top surface of each tread | `extrusion_multiplier` (coarse) |
-| 4. Pressure advance line (recommended) | OrcaSlicer's PA Line as first-layer G-code on a small anchor plate: one line per value (slow, fast, slow runs), the value written beside it in extruded digits, `M572` / `M900` / Klipper's command per line | The line whose fast run is as wide as its slow ends | `pressure_advance_value`, mode `enabled` |
-| 4b. Pressure advance tower (alternative) | Hollow two-perimeter tower with a notch (long runs and 90° corners), perimeters forced to 120 mm/s, one PA value per band, labels on a solid spine | Corner bulge (too little) or gaps after corners (too much) | same |
-| 5. Max volumetric flow | PrusaSlicer's single-wall comb with one speed modifier per band, plus a solid label column; or a solid block | Highest band with no gaps, roughness or extruder clicking | `filament_max_volumetric_speed` |
-| 6. Solid slab (mass check) | 60 × 60 × 20 mm solid block, about 90 g, witness posts, nominal volume and expected mass engraved | Its weight on a 0.01 g scale, ridges on top, blobs on the posts | `extrusion_multiplier` (fine) |
+| 2. Max volumetric flow | PrusaSlicer's single-wall comb with one speed modifier per band, plus a solid label column; or a solid block | Highest band with no gaps, roughness or extruder clicking | `filament_max_volumetric_speed` |
+| 3. Pressure advance › Line test (recommended) | OrcaSlicer's PA Line as first-layer G-code on a small anchor plate: one line per value (slow, fast, slow runs), the value written beside it in extruded digits, `M572` / `M900` / Klipper's command per line | The line whose fast run is as wide as its slow ends | `pressure_advance_value`, mode `enabled` |
+| 3. Pressure advance › Tower (alternative) | Hollow two-perimeter tower with a notch (long runs and 90° corners), perimeters forced to 120 mm/s, one PA value per band, labels on a solid spine | Corner bulge (too little) or gaps after corners (too much) | same |
+| 4. Flow staircase (M221) | One flat chip per flow value — 16 mm long, 30 mm wide, stacked on risers of three layers so they read as chips and not as steps — each printed at its own `M221`, labelled relative to 100, with an Archimedean-chords top. OrcaSlicer's one-pass sweep (-5 to +5% by 1), built the way Crepmähn's "Flow-Rate Calibration for PrusaSlicer" builds it | Top surface of each chip under a raking light | `extrusion_multiplier` (coarse) |
+| 5. Solid slab (mass check) | 60 × 60 × 20 mm solid block, about 90 g, witness posts, nominal volume and expected mass engraved | Its weight on a 0.01 g scale, ridges on top, blobs on the posts | `extrusion_multiplier` (fine) |
+| 6. Cooling tower | Square tower with an overhang wing per band and a slender pillar the head visits every layer, `M106` on every layer of a band, the preset's fan values pinned equal so the slicer's cooling logic stays quiet. With **Model: abyss** it prints the included Ultimate Fan Speed Test V3 instead (CC BY-NC 4.0, see Licensing), whose fan rises 1% per mm of height | The pillar first (fused or bulging layers = too little cooling), then the wings; lowest clean fan. On the abyss model the height in mm of the best band *is* the fan percentage | `min_fan_speed`, `max_fan_speed` |
 | 7. Infill overlap calibration | Row of solid 25 mm blocks, each under a modifier with one overlap value | Top layer where infill meets the perimeters | `infill_overlap` |
 | 8. Shrinkage and growth bar | 150 mm bar with two holes 130 mm apart, nominals engraved | Hole centre distance, width, hole diameter, corner lift on a flat surface | scale factor, `xy_size_compensation`; warp decides brim, bed temperature, enclosure |
 | 9. Hole and fit gauge | Solid plate: clearance holes for a 6 mm pin (+0.0 to +0.5), a 3 to 20 mm hole row, two loose pins and 4 to 10 mm pegs, all one object | First hole the pin enters freely; hole and peg errors per size | design clearances, per-size hole allowances |
@@ -56,9 +57,29 @@ menu follows the procedure).
 | Tools / Apply values from profile.lua | Nothing printed. Writes the values the sheet saved for the selected printer | The log or the helper's drawer | the presets |
 | Tools / Periodic nozzle wipe G-code | Nothing printed. Inserts a brush-wipe routine every N mm of height | | production prints, once a brush is fitted |
 
-Every command that sweeps something takes a minimum, a maximum, and a
-switch: **by interval** (for example every 5 °C) or **by number of
-sections**. Every part is engraved with the printer tag.
+Every command that sweeps something takes the same five fields, because the
+alpha11 param dialog has no dropdowns and no fields that appear only when they
+are needed:
+
+- **Lowest** and **Highest** — the two ends of the sweep. Both are printed when
+  the interval divides the span evenly. Which end comes first is fixed per
+  command and named in each label: the two temperature towers put the hottest
+  section at the bottom, everything else climbs.
+- **Choose by interval (on) or by number of sections (off)** — the switch
+  between the two ways of filling the span. The wording follows what the
+  command makes: sections, bands, lines, chips or blocks.
+- **Interval** — used when the switch is on, and then it wins: the sweep steps
+  by it from the lowest value and stops at or below the highest, so the number
+  of sections is whatever fits (`235` to `260` by `5` gives six sections;
+  by `4` it gives seven and stops at 259).
+- **Number of sections** — used only when the switch is off, and then the span
+  is divided evenly into that many values.
+
+Fields where decimals matter (pressure advance, overlap, the interval for
+either) are typed as text, so `0.005` and `5%` arrive intact; a comma works as
+the decimal separator. A sweep is capped at 20 to 30 values depending on the
+command, and a range that asks for more stops with an error instead of filling
+the plate. Every part is engraved with the printer tag.
 
 ### Why this order, and what each step assumes
 
@@ -68,27 +89,38 @@ command prints and warns when a step was printed with a different
 temperature, multiplier, layer height, nozzle or print profile than the
 earlier steps.
 
+0. **Nozzle clean** before anything is measured. Residue from the last
+   material holds flow back and shifts the temperature the plastic really
+   reaches, and that difference ends up written down as a printer difference.
 1. **Temperature** first, because flow, bridging and stringing all move
    with it. Printed solid on Prusa's model so heat soak in thick sections
    is part of the test.
-2. **Cooling** next, at the chosen temperature, because fan changes both
-   overhang quality and layer strength and everything later prints with it.
-   The pillar shows insufficient cooling first; take the lowest clean fan.
-3. **Flow, coarse then fine**, at the chosen temperature and fan. Two passes
-   on the staircase get within 1%. Apply the result before step 4.
-4. **Pressure advance** once flow is right, because corner bulge from too
-   little PA and over-extrusion look alike. The line test is the quick one
+2. **Max volumetric flow** next, because it measures the hotend rather than
+   any setting, and because everything after it prints at the new limit. Set
+   the filament's volumetric limit and cooling slowdown to 0 for this print
+   (the command can write them, but see the caution below).
+3. **Pressure advance** before flow, which is the order OrcaSlicer's
+   calibration guide uses: corner bulge from too little PA and
+   over-extrusion look alike, so the corners are made clean first and the
+   flow chips are then easy to read. The line test is the quick one
    (minutes, first layer only); the tower is there for a closer look at
    corners. PrusaSlicer 3.0 stores PA in the filament preset (mode plus
    value); Prusa firmware can also self-calibrate it, and the line test
    checks that result. The line test needs the bed centre, taken from the
    printer name for Prusa machines or typed in, and relative extrusion.
-5. **Max volumetric flow** next, because everything after it prints at the
-   new limit. Set the filament's volumetric limit and cooling slowdown to 0
-   for this print (the command can write them, but see the caution below).
-6. **Slab, weighed**, at the new multiplier and limit. Mass is the precise
+4. **Flow**, at the chosen temperature, limit and PA. Orca's recommended
+   sweep is one pass from -5 to +5% in 1% steps; halve the step for a closer
+   look, or use the legacy two passes (-20 to +20 by 5, then 0 to -9 by 1)
+   to get within 1% from a long way out. Apply the result before the slab.
+5. **Slab, weighed**, at the new multiplier and limit. Mass is the precise
    flow measurement and also proves the hotend keeps up at the new speeds;
-   if the slab is light, step 3 was too optimistic.
+   if the slab is light, step 4 was too optimistic.
+6. **Cooling** after the slab. Fan changes overhang quality and layer
+   strength, but not the numbers the earlier steps measure, and a band that
+   fuses or bulges while the flow is still a few percent out says nothing
+   about cooling. It also pins the filament preset's fan values for its run,
+   so it is kept away from the steps whose values are measured. Take the
+   lowest fan that is clean; PETG loses layer strength as the fan goes up.
 7. **Infill overlap** only after flow is right, since overlap and
    over-extrusion look alike on a top surface. Take the lowest overlap with
    no gap beside the innermost perimeter; too much overlap is what bulges
@@ -105,6 +137,55 @@ earlier steps.
 12. **Stringing** is optional and machine-specific.
 13. **Apply** and save the filament preset under the printer's name.
 
+### Gates: what waits on what, and how to spread the work over several printers
+
+Every step reads one result from the step before it, so the first six run in
+series on each printer. After the slab the tests fan out. The sheet's Print
+plan view draws this map live per printer; this is the fixed version.
+
+```mermaid
+flowchart LR
+  s0["0 Nozzle clean"] --> s1["1 Temperature tower"] --> s2["2 Max volumetric flow"] --> s3["3 Pressure advance"] --> s4["4 Flow staircase"] --> s5["5 Solid slab"]
+  s4 --> s12["12 Stringing tower"]
+  s5 --> s6["6 Cooling tower"]
+  s5 --> plate["7 Infill overlap + 8 Shrinkage bar + 9 Hole and fit gauge<br>(one plate)"]
+  s6 --> s10["10 Small-feature tower"]
+  s5 --> s11["11 Reference coupon"]
+  s6 --> s11
+  s11 --> s13["13 Apply results"]
+  s10 --> s13
+  plate --> s13
+  s12 --> s13
+  classDef model fill:#e8e8e8,stroke:#888,color:#111
+  class s1,s2,s6,s12,s10 model
+```
+
+Grey nodes are results that can be copied between printers of the same model
+with the same hotend, nozzle and fan duct (temperature, volumetric limit,
+cooling, small-feature rules, stringing; the shrinkage bar too, as it measures
+the material). Every other step must run on every printer, because it
+measures that machine's extruder or motion. Sharing is advisory: thermistors
+and fans differ between identical machines, and a printer whose parts come out
+different from its siblings should redo the grey steps itself.
+
+### Three identical printers, one spool each
+
+| Wave | Printer A | Printer B | Printer C |
+|---|---|---|---|
+| 1 | 0, then 1 temperature tower | 0, then wait | 0, then wait |
+| 2 | 2 max volumetric flow | wait | wait |
+| 3 | 3 pressure advance | 3 (A's temperature and limit copied in) | 3 (same) |
+| 4 | 4 flow staircase | 4 | 4 |
+| 5 | 5 solid slab | 5 | 5 |
+| 6 | 6 cooling tower (shared later) | plate 7 + 8 + 9 | 12 stringing tower (shared) |
+| 7 | plate 7 + 8 + 9 | 10 small-feature tower (A's cooling result) | plate 7 + 8 + 9 |
+| 8 | 11 reference coupon | 11 | 11 |
+| 9 | 13 apply (own profile entry) | 13 | 13 |
+
+Nine sessions on the longest path instead of thirteen in series. The chain 0
+to 5 cannot be shortened: each of those steps needs the previous result in
+the preset, one variable at a time.
+
 ## Why parts differ between printers at 100% infill
 
 Three separate effects add up, and each test isolates one:
@@ -116,7 +197,7 @@ Three separate effects add up, and each test isolates one:
   X and Y, the nozzle plowing through the previous layer, and PETG collecting
   on the nozzle until it drops. The **slab** measures it directly: a solid
   block of known volume weighed on a scale gives the over-extrusion to about
-  0.1%, better than any visual test. The **flow tower** finds the right
+  0.1%, better than any visual test. The **flow staircase** finds the right
   neighbourhood first.
 - **XY growth of perimeters.** Squish and die swell push the outer wall
   outward by a fixed amount per side, independent of part size. The
@@ -135,19 +216,22 @@ print profile, starting from the stock Prusament PETG profile. The sheet
 (`wizard/index.html`) walks through it and does the arithmetic; the short
 form:
 
+0. **Nozzle clean**: nylon (or PLA) at the material's own temperatures, once
+   per printer, before anything else is printed.
 1. **Temperature tower**: 260 down to 235 °C in 5 °C bands. Choose the
-   coolest clean band. Apply it (step 9 or the profile).
-2. **Cooling tower**: 0 to 100% in 20% bands. Lowest clean fan becomes the
-   minimum; maximum 20% above. Discard the preset changes afterwards.
-3. **Flow staircase** pass 1 (80 to 120% by 5) then pass 2 (winner ± 4% by
-   1). Multiplier = current × winner / 100. Apply it. Put `M221 S100` in the
-   end G-code.
-4. **Pressure advance line**: 0.00 to 0.08 in 0.005 steps. The line whose
-   fast run matches its slow ends. Apply it (mode enabled plus the value).
-5. **Max volumetric flow** on the comb, 6 to 24 mm³/s. Limit = 85% of the
+   coolest clean band. Apply it (step 13 or the profile).
+2. **Max volumetric flow** on the comb, 6 to 24 mm³/s. Limit = 85% of the
    highest clean band. Apply it.
-6. **Slab**: weigh it. Multiplier = printed multiplier × expected g /
+3. **Pressure advance line**: 0.00 to 0.08 in 0.005 steps. The line whose
+   fast run matches its slow ends. Apply it (mode enabled plus the value).
+4. **Flow staircase**: one pass, -5 to +5% in 1% steps (or -20 to +20 by 5
+   and then 0 to -9 by 1 for the two-pass method). Multiplier = current ×
+   chosen % / 100. Apply it. Put `M221 S100` in the end G-code.
+5. **Slab**: weigh it. Multiplier = printed multiplier × expected g /
    measured g. Apply it.
+6. **Cooling tower**: 0 to 100% in 20% bands, or the abyss model, where the
+   height in mm of the best band is the percentage. Lowest clean fan becomes
+   the minimum; maximum 20% above. Discard the preset changes afterwards.
 7. **Infill overlap**: 10 to 35% in 5% steps. Lowest value with no gap.
 8. **Bar**: shrinkage from hole centres, XY growth from width and hole,
    corner lift on a flat surface.
@@ -186,7 +270,7 @@ machines.
 
 ### profile.lua: the sheet's values inside the plugin
 
-Step 9 of the sheet writes a `profile.lua`, keyed by printer name as
+Step 13 of the sheet writes a `profile.lua`, keyed by printer name as
 PrusaSlicer shows it, with the tag and the dialed-in values for each
 printer. Put it in the bundle folder (the helper does this with one click)
 and:
@@ -196,7 +280,7 @@ and:
 - **Tools > Apply values from profile.lua** writes the temperatures,
   multiplier, volumetric limit, pressure advance (value plus mode
   enabled), fan and slowdown values into the selected filament preset and the overlap into the print preset, in one click,
-  instead of retyping them into command 9.
+  instead of retyping them into command 13.
 
 No rescan is needed after changing `profile.lua`; it is read on every Run.
 
@@ -258,8 +342,8 @@ The sheet repeats this reminder on each step.
   bed's custom G-code list before inserting their own entries (undo restores
   the old list).
 - **Presets are modified, not saved.** Command 13 and Tools › Apply change
-  the selected presets; command 2 pins the filament's fan values for its
-  run (turn the option off to do it by hand) and command 5 does so only when its "write 0 into the
+  the selected presets; command 6 pins the filament's fan values for its
+  run (turn the option off to do it by hand) and command 2 does so only when its "write 0 into the
   preset's limits" option is on. The GUI shows them as modified. Switching
   printer or material profiles while presets are modified has crashed
   alpha11 (exit code 0xC0000409); save or discard the changes before
@@ -272,6 +356,14 @@ The sheet repeats this reminder on each step.
 - **Fan steps.** The stringing tower inserts `M106` per section. PrusaSlicer's
   own cooling logic may re-issue fan commands when it changes speed, so keep
   the filament's fan settings constant while running a fan sweep.
+- **The fan test model is included, and it is the one non-commercial file.**
+  Step 6 with **Model: abyss** prints the *Ultimate Fan Speed Test V3*
+  (Printables model 200347, by Abyss, CC BY-NC 4.0), shipped at
+  `assets/fan/ultimate-fan-test-v3.stl`. It ignores the fan fields and steps the
+  fan 1% per mm of height on every layer, and adds a small solid plate with the
+  printer tag beside the model, which carries no label of its own. If the file
+  has been removed the command stops with an error naming the path and the
+  model. See Licensing below before selling or bundling this plugin.
 - **Setting keys.** The sweep plate passes the key straight to the slicer.
   An unknown key or one of an unsupported type (boolean, string, vector) is
   ignored silently by the alpha11 setter; the object list in PrusaSlicer shows
@@ -297,9 +389,11 @@ ascending Z.
 What the mock cannot check is the real slicer: run each command once on a
 printer profile you care about and look at the result in the 3D view before
 printing. Worth eyeballing the first time: label orientation on front and
-back faces, that the overhang wings attach to the +X side, that the
-volumetric tower's modifiers show per-section speeds in the object list, and
-the nozzle wipe path in the G-code preview.
+back faces, that the flow chips carry their numbers in the front band of each
+chip's top (the risers are far too low for a face label), that the overhang
+wings attach to the +X side, that the volumetric tower's modifiers show
+per-section speeds in the object list, and the nozzle wipe path in the G-code
+preview.
 
 ## Layout
 
@@ -311,13 +405,14 @@ prusaslicer-filament-dialin/
   helper/dialin_helper.py            serves the sheet beside PrusaSlicer, installs the bundle, streams its output
   com.ripleydynamics.filament-dialin/   the bundle to copy into the user plugins folder
     manifest.json
+    00_nozzle_clean.lua              0. hot purge and cold pull before testing
     01_temp_tower.lua                1. temperature tower on Prusa's model
-    02_cooling_tower.lua             2. cooling tower with heat-soak pillar
-    03_flow_stairs.lua               3. M221 flow staircase
-    04_pa_line.lua                   4. pressure advance line test (Orca PA Line as first-layer G-code)
-    04b_pa_tower.lua                 4b. pressure advance tower (alternative)
-    05_volumetric_tower.lua          5. max volumetric flow on Prusa's comb
-    06_slab.lua                      6. solid slab, mass check
+    02_volumetric_tower.lua          2. max volumetric flow on Prusa's comb
+    03_pa_line.lua                   3. pressure advance line test (Orca PA Line as first-layer G-code)
+    03b_pa_tower.lua                 3. pressure advance tower (alternative)
+    04_flow_stairs.lua               4. M221 flow staircase of flat chips
+    05_slab.lua                      5. solid slab, mass check
+    06_cooling_tower.lua             6. cooling tower with heat-soak pillar, or the fan test STL
     07_overlap.lua                   7. infill overlap calibration
     08_shrink_bar.lua                8. shrinkage and growth bar
     09_hole_fit_gauge.lua            9. hole and fit gauge
@@ -328,7 +423,10 @@ prusaslicer-filament-dialin/
     tools_apply_profile.lua          Tools: write values from profile.lua
     tools_nozzle_wipe.lua            Tools: periodic nozzle wipe G-code
     profile.lua                      (optional) written by the sheet or the helper
-    assets/prusa/                    Prusa's calibration STLs and comb SVG (AGPL-3.0) and design credits, see THIRD_PARTY.md
+    THIRD_PARTY.md                   every third-party notice and design credit, in one place
+    assets/prusa/                    Prusa's calibration STLs and comb SVG (AGPL-3.0-only)
+    assets/fan/ultimate-fan-test-v3.stl  Ultimate Fan Speed Test V3 by Abyss (CC BY-NC 4.0, non-commercial)
+    assets/fan/README.md             how that model is read, and its attribution
     lib/util.lua                     value parsing, preset readers, logging
     lib/label.lua                    engraved text on front, back and top faces
     lib/tower.lua                    stacked-section tower builder and overhang wing
@@ -336,3 +434,26 @@ prusaslicer-filament-dialin/
     mock_api.lua                     stand-in for PrusaSlicer's api / VolumeType
     run_tests.lua                    discovery and execution tests
 ```
+
+## Licensing
+
+The code in this repository is **MIT**. Two sets of shipped assets are not, so
+the bundle as a whole is
+`MIT AND AGPL-3.0-only AND CC-BY-NC-4.0` (the string in `manifest.json`):
+
+- **AGPL-3.0-only** — `assets/prusa/temp_tower-base.stl`,
+  `assets/prusa/temp_tower-step.stl` and `assets/prusa/hreben.svg` are copied
+  unchanged from PrusaSlicer 3.0.0-alpha11, Copyright Prusa Research a.s.
+- **CC BY-NC 4.0, non-commercial** — `assets/fan/ultimate-fan-test-v3.stl` is
+  "Ultimate Fan Speed Test V3" by **Abyss** (Printables model 200347), a remix
+  of "Ultimate Fan Speed Test" and "Cooling direction test" by
+  **@MarioL_3d_designer**, shipped unmodified in its 26 November 2025
+  "new version angle v2" form. **This is the only file here that may not be
+  used commercially:** if you sell this plugin, or ship it inside something you
+  sell, delete that STL and let each user place their own copy. Step 6 still
+  works — its built-in tower needs no asset, and `Model: abyss` then stops with
+  an error naming the path and the model number.
+
+`com.ripleydynamics.filament-dialin/THIRD_PARTY.md` carries the full notices
+and the design credits for the geometry this bundle generates itself
+(leotrax3d, Crepmähn).

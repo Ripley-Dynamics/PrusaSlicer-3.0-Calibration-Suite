@@ -4,8 +4,11 @@ info = {
     title = "Stringing tower (temperature and fan steps)",
     menu = "Filament Dial-In/12. Stringing tower",
     params = {
-        { name = "range", label = "Range [C], first value at the bottom: 250 to 225 step 5, or one number (250) for a constant temperature", type = "string", default = "250 to 225 step 5" },
-        { name = "sections", label = "Number of sections (only used for a constant temperature)", type = "int", default = 6 },
+        { name = "max_temp", label = "Hottest section [C] (bottom)", type = "int", default = 250 },
+        { name = "min_temp", label = "Coolest section [C] (top)", type = "int", default = 225 },
+        { name = "by_interval", label = "Choose by interval (on) or by number of sections (off)", type = "bool", default = true },
+        { name = "interval", label = "Interval [C] (0 = constant temperature, sections from the count)", type = "int", default = 5 },
+        { name = "sections", label = "Number of sections (when interval is off or 0)", type = "int", default = 6 },
         { name = "fan_start", label = "Bottom section fan [%] (-1 = leave fan to slicer)", type = "int", default = -1 },
         { name = "fan_step", label = "Fan increase per section [%]", type = "int", default = 0 },
         { name = "section_height", label = "Section height [mm]", type = "int", default = 8 },
@@ -20,16 +23,20 @@ function execute(opts)
     local label = require("lib/label")
     local tower = require("lib/tower")
 
-    -- One number means "same temperature all the way up"; the number of
+    -- Interval 0 means "same temperature all the way up"; the number of
     -- sections then comes from the sections field.
-    local temps = util.parse_range(opts.range, { integer = true, max_count = 20, what = "Temperature range" })
-    local constant = #temps == 1
+    local interval = util.int(opts.interval, "interval", 5)
+    local constant = opts.by_interval and interval == 0
+    local temps
     if constant then
         local n = util.int(opts.sections, "sections", 6)
         assert(n >= 2 and n <= 20, "Number of sections must be between 2 and 20")
-        local t = temps[1]
         temps = {}
-        for i = 1, n do temps[i] = t end
+        for i = 1, n do temps[i] = util.int(opts.max_temp, "temperature") end
+    else
+        temps = util.range { min = opts.min_temp, max = opts.max_temp, by_interval = opts.by_interval,
+            interval = interval, count = opts.sections, integer = true, max_count = 20 }
+        table.sort(temps, function(a, b) return a > b end)
     end
     for _, t in ipairs(temps) do
         assert(t >= 150 and t <= 350, "Temperature out of range: " .. t)
@@ -91,6 +98,6 @@ function execute(opts)
     if use_fan then
         util.log("the slicer may re-issue its own M106 when its cooling logic changes fan speed; keep the filament's fan settings constant for this test")
     end
-    util.data(bed, "string", { tag = tag, range = tostring(opts.range), values = util.join(temps, 0), sections = n,
+    util.data(bed, "string", { tag = tag, values = util.join(temps, 0), sections = n,
         constant = constant, fan_start = fan_start, fan_step = fan_step })
 end

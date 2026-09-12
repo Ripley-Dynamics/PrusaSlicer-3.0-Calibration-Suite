@@ -4,7 +4,11 @@ info = {
     title = "Infill overlap calibration (row of 100% infill blocks)",
     menu = "Filament Dial-In/7. Infill overlap calibration",
     params = {
-        { name = "range", label = "Range, first value on the first block: 10% to 35% step 5%, or 10% to 35% x6", type = "string", default = "10% to 35% step 5%" },
+        { name = "min_value", label = "Lowest overlap (first block), e.g. 10%", type = "string", default = "10%" },
+        { name = "max_value", label = "Highest overlap (last block), e.g. 35%", type = "string", default = "35%" },
+        { name = "by_interval", label = "Choose by interval (on) or by number of blocks (off)", type = "bool", default = true },
+        { name = "interval", label = "Interval, e.g. 5%", type = "string", default = "5%" },
+        { name = "blocks", label = "Number of blocks (when interval is off)", type = "int", default = 6 },
         { name = "block_size", label = "Block size X/Y [mm]", type = "int", default = 25 },
         { name = "block_height", label = "Block height [mm]", type = "int", default = 8 },
         { name = "gap", label = "Gap between blocks [mm]", type = "int", default = 6 },
@@ -29,14 +33,19 @@ function execute(opts)
 
     local key = tostring(opts.setting or "infill_overlap"):gsub("^%s+", ""):gsub("%s+$", "")
     assert(key:match("^[%a_][%w_]*$"), "Setting key must be a PrusaSlicer config key such as infill_overlap")
-    -- A percent sign anywhere in the range makes every value a percentage,
+    local lo, lo_pct = util.number_or_percent(opts.min_value, "lowest value")
+    local hi, hi_pct = util.number_or_percent(opts.max_value, "highest value")
+    local step, step_pct = util.number_or_percent(opts.interval, "interval")
+    assert(lo ~= nil and hi ~= nil, "Lowest and highest values are required")
+    -- A percent sign on any of the three makes every value a percentage,
     -- which is what infill_overlap expects.
-    local values, spec = util.parse_range(opts.range, {
-        integer = INTEGER_SETTINGS[key] or false, max_count = 12, what = "Overlap range",
-    })
-    local as_percent = spec.percent
+    local as_percent = lo_pct or hi_pct or step_pct
+
+    local values = util.range {
+        min = lo, max = hi, by_interval = opts.by_interval, interval = step, count = opts.blocks,
+        integer = INTEGER_SETTINGS[key] or false, max_count = 12,
+    }
     local n = #values
-    assert(n >= 2, "An overlap plate needs at least two blocks")
     local size = util.num(opts.block_size, "block size", 25)
     local height = util.num(opts.block_height, "block height", 8)
     local gap = util.num(opts.gap, "gap", 6)
@@ -94,6 +103,6 @@ function execute(opts)
     util.log(string.format("%s calibration for %s: %s to %s across %d blocks (%s mm wide)",
         key, tag, texts[1], texts[n], n, util.fmt(n * size + (n - 1) * gap)))
     util.log("judge the top layer where infill meets the innermost perimeter: gap or pinholes = too little, ridges and side bulge = too much")
-    util.data(bed, "overlap", { tag = tag, setting = key, range = tostring(opts.range), values = table.concat(texts, ","), blocks = n,
+    util.data(bed, "overlap", { tag = tag, setting = key, values = table.concat(texts, ","), blocks = n,
         block_size = size, block_height = height })
 end

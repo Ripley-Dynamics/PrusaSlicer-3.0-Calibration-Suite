@@ -2,9 +2,13 @@ info = {
     id = "pa_tower",
     type = "project.plugin",
     title = "Pressure advance tower (corners at speed, one PA value per band)",
-    menu = "Filament Dial-In/4. Pressure advance/Tower (alternative)",
+    menu = "Filament Dial-In/3. Pressure advance/Tower (alternative)",
     params = {
-        { name = "range", label = "Range, first value at the bottom: 0.00 to 0.10 step 0.01, or 0.00 to 0.10 x6", type = "string", default = "0.00 to 0.10 step 0.01" },
+        { name = "min_pa", label = "Lowest pressure advance (bottom), e.g. 0.00", type = "string", default = "0.00" },
+        { name = "max_pa", label = "Highest pressure advance (top), e.g. 0.10", type = "string", default = "0.10" },
+        { name = "by_interval", label = "Choose by interval (on) or by number of bands (off)", type = "bool", default = true },
+        { name = "interval", label = "Interval, e.g. 0.01", type = "string", default = "0.01" },
+        { name = "sections", label = "Number of bands (when interval is off)", type = "int", default = 6 },
         { name = "section_height", label = "Band height [mm]", type = "int", default = 5 },
         { name = "speed", label = "Perimeter speed for the test [mm/s]", type = "int", default = 120 },
         { name = "firmware", label = "Firmware: prusa (M572), marlin (M900), klipper, reprap", type = "string", default = "prusa" },
@@ -43,12 +47,12 @@ function execute(opts)
     local firmware = tostring(opts.firmware or "prusa"):lower():gsub("%s", "")
     local template = COMMANDS[firmware]
     assert(template, "Firmware must be one of prusa, marlin, klipper, reprap")
-    local values = util.parse_range(opts.range, { max_count = 20, what = "Pressure advance range" })
+    local values = util.range {
+        min = util.decimal(opts.min_pa, "lowest pressure advance"), max = util.decimal(opts.max_pa, "highest pressure advance"),
+        by_interval = opts.by_interval, interval = util.decimal(opts.interval, "interval"), count = opts.sections, max_count = 20,
+    }
     local n = #values
-    assert(n >= 2, "A pressure advance tower needs at least two bands")
-    for _, pa in ipairs(values) do
-        assert(pa >= 0 and pa <= 2, "Pressure advance must be between 0 and 2")
-    end
+    assert(values[1] >= 0 and values[n] <= 2, "Pressure advance must be between 0 and 2")
     local section_req = util.num(opts.section_height, "band height", 5)
     local speed = util.num(opts.speed, "speed", 120)
     assert(section_req >= 3 and speed >= 10, "Band height must be at least 3 mm and speed at least 10 mm/s")
@@ -101,6 +105,6 @@ function execute(opts)
         tag, n, util.fmt(h), util.fmt(values[1], 3), util.fmt(values[n], 3), firmware, util.fmt(speed)))
     util.log("judge the corners on the front: bulges and blobs = too little PA, gaps and thin lines after corners = too much; the plinth prints at the preset's value"
         .. (current and (" (" .. util.fmt(current, 3) .. ")") or ""))
-    util.data(bed, "pa", { method = "tower", tag = tag, range = tostring(opts.range), values = util.join(values, 3), sections = n,
+    util.data(bed, "pa", { method = "tower", tag = tag, values = util.join(values, 3), sections = n,
         section_height = h, speed = speed, firmware = firmware })
 end

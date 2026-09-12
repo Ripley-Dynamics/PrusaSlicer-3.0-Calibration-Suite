@@ -4,10 +4,10 @@ info = {
     title = "Nozzle clean: hot purge with cleaning filament, cold pull, reload test filament",
     menu = "Filament Dial-In/0. Nozzle clean before testing",
     params = {
-        { name = "clean_temp", label = "Purge temperature [C] (Prusa's guide: 260 for PLA residue, 280 for PETG/ASA residue)", type = "int", default = 270 },
-        { name = "cleaning_filament", label = "Cleaning filament (named in the printer's prompts)", type = "string", default = "Nylon" },
+        { name = "cleaning_filament", label = "Cleaning material: nylon (default) or pla; any other name is used as typed, with the nylon temperatures", type = "string", default = "nylon" },
+        { name = "clean_temp", label = "Purge temperature [C] (0 = the material's default: nylon 270, PLA 270; Prusa's guide: 260 for PLA residue, 280 for PETG/ASA residue)", type = "int", default = 0 },
+        { name = "pull_temp", label = "Cold pull temperature [C] (0 = the material's default: nylon 130, PLA 100)", type = "int", default = 0 },
         { name = "purge_mm", label = "Purge length [mm] (extruded in 20 mm chunks)", type = "int", default = 100 },
-        { name = "pull_temp", label = "Cold pull temperature [C] (Prusa's manual cold pull pulls at 100)", type = "int", default = 100 },
         { name = "firmware", label = "Firmware: prusa (M601), marlin (M0), klipper (PAUSE), reprap (M226)", type = "string", default = "prusa" },
     },
 }
@@ -25,10 +25,25 @@ info = {
 -- firmware's own filament change (M600) and its pause command, which the user
 -- resumes from the printer. Relative extrusion (M83, the Prusa default) is
 -- assumed for the purge moves.
+--
+-- The cleaning material chooses the temperatures: nylon (the default) or PLA,
+-- case-insensitively, with any other word taken as a free material name on
+-- nylon's numbers. A typed purge or pull temperature overrides them; 0 means
+-- "use the material's default".
 
 local PLATE, PLATE_H = 20, 1
 local CHUNK, PURGE_FEED = 20, 150
 local RELOAD_PURGE = 40
+
+-- The cleaning materials Prusa's guide names, with the temperatures it gives
+-- for each: the purge is hot, the cold pull is material-specific (nylon holds
+-- together warm, PLA has to be pulled colder - Prusa's manual cold pull pulls
+-- PLA at 100 C). Any other name is accepted as typed and uses nylon's numbers.
+local MATERIALS = {
+    nylon = { name = "nylon", clean_temp = 270, pull_temp = 130 },
+    pla = { name = "PLA", clean_temp = 270, pull_temp = 100 },
+}
+local DEFAULT_MATERIAL = "nylon"
 
 -- pause: %s is filled with the on-screen message where the command carries one.
 -- cool: waits for the nozzle to come DOWN to the given temperature.
@@ -54,10 +69,25 @@ function execute(opts)
     local firmware = tostring(opts.firmware or "prusa"):lower():gsub("%s", "")
     local fw = FIRMWARE[firmware]
     assert(fw, "Firmware must be one of prusa, marlin, klipper, reprap")
-    local clean_temp = util.int(opts.clean_temp, "purge temperature", 270)
-    local pull_temp = util.int(opts.pull_temp, "cold pull temperature", 100)
+    -- The material chooses the temperatures; a typed value overrides it.
+    local typed = clean_text(opts.cleaning_filament, DEFAULT_MATERIAL)
+    local key = typed:lower()
+    local known = MATERIALS[key]
+    local defaults = known or MATERIALS[DEFAULT_MATERIAL]
+    local cleaning = known and known.name or typed
+    if not known then
+        util.log(string.format("'%s' is not one of nylon or pla; using it as the material name with the %s temperatures (purge %d C, cold pull %d C)",
+            cleaning, MATERIALS[DEFAULT_MATERIAL].name, defaults.clean_temp, defaults.pull_temp))
+    end
+    local clean_temp = util.int(opts.clean_temp, "purge temperature", 0)
+    if clean_temp == 0 then
+        clean_temp = defaults.clean_temp
+    end
+    local pull_temp = util.int(opts.pull_temp, "cold pull temperature", 0)
+    if pull_temp == 0 then
+        pull_temp = defaults.pull_temp
+    end
     local purge_mm = util.int(opts.purge_mm, "purge length", 100)
-    local cleaning = clean_text(opts.cleaning_filament, "cleaning filament")
     assert(clean_temp >= 150 and clean_temp <= 300, "Purge temperature must be between 150 and 300 C")
     assert(pull_temp >= 60 and pull_temp <= 160, "Cold pull temperature must be between 60 and 160 C")
     assert(purge_mm >= 20 and purge_mm <= 300, "Purge length must be between 20 and 300 mm")
@@ -100,7 +130,7 @@ function execute(opts)
     message("Insert " .. cleaning .. " when asked", "the printer asks for it on the next line")
     emit("M600", "the firmware's own filament change: unloads the test filament, prompts for the new one")
     local purge_moves = purge(purge_mm, "purge the cleaning filament through")
-    message("Cooling for cold pull", "the pull happens cold, not hot")
+    message("Cooling for the " .. cleaning .. " cold pull", "the pull happens cold, not hot")
     emit("M104 S" .. pull_temp, "cool down to the cold-pull temperature")
     emit(string.format(fw.cool, pull_temp), "wait for the nozzle to come DOWN to it")
     message("Pull the filament out firmly, then resume", "this is the cold pull")
@@ -123,11 +153,11 @@ function execute(opts)
         object_params = util.solid_params(),
     }
 
-    util.log(string.format("nozzle clean for %s (%s): purge %s mm of %s at %d C in %d moves of %d mm, cold pull at %d C, reload and purge %s mm at %d C",
-        tag, firmware, util.fmt(purge_mm), cleaning, clean_temp, purge_moves, CHUNK, pull_temp, util.fmt(RELOAD_PURGE), reload_temp))
+    util.log(string.format("nozzle clean for %s (%s): purge %s mm of %s at %d C in %d moves of %d mm, %s cold pull at %d C, reload and purge %s mm at %d C",
+        tag, firmware, util.fmt(purge_mm), cleaning, clean_temp, purge_moves, CHUNK, cleaning, pull_temp, util.fmt(RELOAD_PURGE), reload_temp))
     util.log("this relies on the firmware's own M600 prompts (unload, insert, load) and on a pause you resume from the printer after pulling the filament out; check the sequence in the G-code preview before printing")
     util.log("CORE One firmware also offers Control > Cold Pull, which walks through the same routine from the printer's menu")
     util.data(bed, "clean", { tag = tag, clean_temp = clean_temp, pull_temp = pull_temp, reload_temp = reload_temp,
         purge_mm = purge_mm, purge_moves = purge_moves, reload_purge_mm = RELOAD_PURGE, reload_moves = reload_moves,
-        cleaning_filament = cleaning, firmware = firmware, plate = PLATE })
+        cleaning_filament = cleaning, material = key, firmware = firmware, plate = PLATE })
 end

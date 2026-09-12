@@ -297,11 +297,15 @@ function Mock.new(options)
         positive(R, r)
         return new_mesh("torus", { min_x = -R - r, min_y = -R - r, min_z = -r, max_x = R + r, max_y = R + r, max_z = r }, ZERO)
     end
-    -- Assets: bounds measured from the real files in assets/prusa.
+    -- Assets: bounds measured from the real files shipped in assets/, the fan
+    -- test model included. `missing_assets` simulates a file that is absent
+    -- (someone removed the CC BY-NC model, say).
     local ASSETS = {
         ["assets/prusa/temp_tower-base.stl"] = { min_x = -40, min_y = -5, min_z = -1, max_x = 40, max_y = 5, max_z = 0 },
         ["assets/prusa/temp_tower-step.stl"] = { min_x = -40, min_y = -5, min_z = 0, max_x = 40, max_y = 5.5, max_z = 10 },
+        ["assets/fan/ultimate-fan-test-v3.stl"] = { min_x = -21.0, min_y = -12, min_z = 0, max_x = 67.46, max_y = 12, max_z = 99.98 },
     }
+    local MISSING = options.missing_assets or {}
     local function check_path(path)
         assert(type(path) == "string", "asset path must be a string")
         assert(not path:find("%.%.") and path:sub(1, 1) ~= "/", "asset path escapes the sandbox: " .. path)
@@ -309,7 +313,7 @@ function Mock.new(options)
     function api.load_stl(path)
         check_path(path)
         local b = ASSETS[path]
-        if not b then error("Cannot safely load file: " .. path) end
+        if MISSING[path] or not b then error("Cannot safely load file: " .. path) end
         -- Loaded assets carry valid bounds (unlike primitives).
         return new_mesh("stl", b, { b.min_x, b.min_y, b.min_z, b.max_x, b.max_y, b.max_z })
     end

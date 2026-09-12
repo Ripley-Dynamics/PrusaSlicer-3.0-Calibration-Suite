@@ -4,7 +4,7 @@
   "version": "0.2.0",
   "min_slicer_version": "3.0.0",
   "author": "ripley-dynamics",
-  "license": "MIT AND AGPL-3.0-only",
+  "license": "MIT AND AGPL-3.0-only AND CC-BY-NC-4.0",
   "description": "Test suite for dialing in a filament at 100% infill and matching parts across printers: temperature tower and max-flow comb on Prusa's own calibration models, an M221 flow staircase, a weighed slab, infill overlap, shrinkage bar, reference coupon, stringing, and preset writers.",
   "category": "Calibration",
   "repo": "https://github.com/Ripley-Dynamics/Prusa-USA-StockChecker",

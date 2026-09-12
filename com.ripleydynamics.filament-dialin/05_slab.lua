@@ -2,7 +2,7 @@ info = {
     id = "slab",
     type = "project.plugin",
     title = "Solid slab: mass check and endurance (100% infill)",
-    menu = "Filament Dial-In/6. Solid slab (mass check)",
+    menu = "Filament Dial-In/5. Solid slab (mass check)",
     params = {
         { name = "size_x", label = "Size X [mm]", type = "int", default = 60 },
         { name = "size_y", label = "Size Y [mm]", type = "int", default = 60 },
