@@ -12,7 +12,7 @@ info = {
 -- profile.lua is written by the dial-in sheet (or the helper) into the bundle
 -- folder. Keys per printer, all optional:
 --   tag, temperature, first_layer_temperature, extrusion_multiplier,
---   filament_max_volumetric_speed, min_fan_speed, max_fan_speed,
+--   filament_max_volumetric_speed, pressure_advance, min_fan_speed, max_fan_speed,
 --   slowdown_below_layer_time, infill_overlap ("15%" or 0.1),
 --   xy_size_compensation, elefant_foot_compensation (informational: per-object)
 
@@ -21,6 +21,7 @@ local MATERIAL_KEYS = {
     { "first_layer_temperature", "first layer temperature", "int" },
     { "extrusion_multiplier", "extrusion multiplier", "number" },
     { "filament_max_volumetric_speed", "filament max volumetric speed", "number" },
+    { "pressure_advance_value", "pressure advance value", "number" },
     { "min_fan_speed", "min fan speed", "int" },
     { "max_fan_speed", "max fan speed", "int" },
     { "slowdown_below_layer_time", "slowdown below layer time", "int" },
@@ -53,6 +54,10 @@ function execute(opts)
         local material = bed:material_presets(0)
         for _, k in ipairs(MATERIAL_KEYS) do
             apply(material, k[1], entry[k[1]], k[2], k[3])
+        end
+        if entry.pressure_advance ~= nil and entry.pressure_advance ~= "" then
+            apply(material, "pressure_advance_value", entry.pressure_advance, "pressure advance value", "number")
+            apply(material, "pressure_advance", "enabled", "pressure advance mode")
         end
     end
     if opts.print_preset then

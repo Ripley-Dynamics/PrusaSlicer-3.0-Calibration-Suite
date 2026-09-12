@@ -208,6 +208,8 @@ local function material_defs()
         first_layer_temperature = { kind = "int", value = 240 },
         extrusion_multiplier = { kind = "double", value = 1.0 },
         filament_density = { kind = "double", value = 1.27 },
+        pressure_advance = { kind = "enum", value = "disabled", allowed = { "disabled", "enabled", "automatic_calibration" } },
+        pressure_advance_value = { kind = "double", value = 0 },
         filament_max_volumetric_speed = { kind = "double", value = 8 },
         slowdown_below_layer_time = { kind = "int", value = 20 },
         min_print_speed = { kind = "double", value = 15 },

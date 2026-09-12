@@ -202,6 +202,7 @@ M.BASELINE_KEYS = {
     { "material", "extrusion_multiplier", "p_extrusion_multiplier" },
     { "material", "filament_max_volumetric_speed", "p_max_volumetric_speed" },
     { "material", "filament_density", "p_density" },
+    { "material", "pressure_advance_value", "p_pressure_advance" },
 }
 
 function M.baseline(bed)

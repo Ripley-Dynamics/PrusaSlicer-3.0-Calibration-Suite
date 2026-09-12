@@ -2,7 +2,7 @@ info = {
     id = "volumetric_tower",
     type = "project.plugin",
     title = "Max volumetric flow: Prusa's single-wall comb, or a solid block",
-    menu = "Filament Dial-In/3. Max volumetric flow",
+    menu = "Filament Dial-In/4. Max volumetric flow",
     params = {
         { name = "min_flow", label = "Lowest flow [mm3/s] (bottom)", type = "int", default = 6 },
         { name = "max_flow", label = "Highest flow [mm3/s] (top)", type = "int", default = 24 },

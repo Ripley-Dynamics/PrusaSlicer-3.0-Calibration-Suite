@@ -2,7 +2,7 @@ info = {
     id = "coupon",
     type = "project.plugin",
     title = "Reference coupon: thick solid body, hole, overhang wing, thin fins",
-    menu = "Filament Dial-In/7. Reference coupon",
+    menu = "Filament Dial-In/8. Reference coupon",
     params = {
         { name = "length", label = "Length X [mm]", type = "int", default = 50 },
         { name = "width", label = "Width Y [mm]", type = "int", default = 25 },

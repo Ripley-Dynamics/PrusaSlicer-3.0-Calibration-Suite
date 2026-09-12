@@ -247,7 +247,7 @@ test("every file evaluates without api/require (discovery scan)", function()
     for _, m in ipairs(modules) do
         check(m.ok, m.path .. " failed at discovery: " .. tostring(m.err))
     end
-    check(#commands == 11, "expected 11 commands, found " .. #commands)
+    check(#commands == 12, "expected 12 commands, found " .. #commands)
 end)
 
 test("command metadata is valid for alpha11 and the menu reads 1..9 in filename order", function()
@@ -276,12 +276,12 @@ test("command metadata is valid for alpha11 and the menu reads 1..9 in filename 
             check(type(p.label) == "string", f .. ": label missing for " .. p.name)
             check(p.type ~= "float", f .. ": avoid float params (alpha11 rounds them); use int or string")
         end
-        local num = info.menu:match("/(%d)%. ")
+        local num = info.menu:match("/(%d+)%. ")
         if num then numbered[#numbered + 1] = tonumber(num) else check(info.menu:find("/Tools/", 1, true), f .. ": unnumbered command must be under Tools") end
     end
     -- `commands` is sorted by filename, which is the order PrusaSlicer shows
     for i, n in ipairs(numbered) do check(n == i, "menu number " .. n .. " appears at position " .. i) end
-    check(#numbered == 9, "nine numbered steps")
+    check(#numbered == 10, "ten numbered steps")
 end)
 
 print("Library")
@@ -392,7 +392,34 @@ test("2 flow staircase", function()
     must_fail(cmd("flow_tower"), { min_flow = 40 }, "out of range")
 end)
 
-test("3 max volumetric flow: Prusa comb", function()
+test("3 pressure advance tower", function()
+    local mock = run_command(cmd("pa_tower"))
+    local obj = generic_checks(mock)
+    local g = gcode_lines(mock)
+    check(#g == 11 and g[1] == "M572 S0" and g[2] == "M572 S0.01" and g[11] == "M572 S0.1", "0.00 to 0.10 by 0.01 as M572: " .. table.concat(g, " "))
+    check(near(mock.bed.gcodes[1].z, 5.1) and near(mock.bed.gcodes[2].z, 10.1), "first change above the plinth, then every band")
+    check(obj.mesh.dims.max_x == 40 and obj.mesh.dims.max_y == 20 and near(obj.mesh.dims.max_z, 5), "plinth 40 x 20 x 5")
+    check(obj.object_params.perimeters == 2 and obj.object_params.fill_density == "0%" and obj.object_params.top_solid_layers == 0, "hollow two-perimeter body")
+    local solids = volumes_of(obj, VT.Solid, "cube")
+    check(#solids == 2 and near(solids[1].mesh.dims.max_z, 55) and near(solids[1].translate.z, 5), "body and spine, 11 bands of 5 mm")
+    local notch = volumes_of(obj, VT.Negative, "cube")
+    check(#notch == 1 and near(notch[1].translate.x, 14) and near(notch[1].translate.y, -1), "notch in the front")
+    local speed_mods, solid_mods = 0, 0
+    for _, m in ipairs(volumes_of(obj, VT.Modifier)) do
+        if m.params.external_perimeter_speed == 120 then speed_mods = speed_mods + 1 elseif m.params.fill_density == "100%" then solid_mods = solid_mods + 1 end
+    end
+    check(speed_mods == 11 and solid_mods == 2, "one speed modifier per band, solid spine and plinth: " .. speed_mods .. "/" .. solid_mods)
+    for _, v in ipairs({ "0", "0.05", "0.1", "MK4S 0.4" }) do check(has_text(obj, v), "label " .. v) end
+    local d = parse_data(data_line(mock))
+    check(d.step == "pa" and d.values == "0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1" and d.firmware == "prusa" and d.p_pressure_advance == 0, "DATA")
+    local mock2 = run_command(cmd("pa_tower"), { firmware = "klipper", by_interval = false, sections = 3, min_pa = "0.02", max_pa = "0.06" })
+    check(table.concat(gcode_lines(mock2), " | ") == "SET_PRESSURE_ADVANCE ADVANCE=0.02 | SET_PRESSURE_ADVANCE ADVANCE=0.04 | SET_PRESSURE_ADVANCE ADVANCE=0.06", "klipper by sections: " .. table.concat(gcode_lines(mock2), " | "))
+    check(gcode_lines(run_command(cmd("pa_tower"), { firmware = "marlin", max_pa = "0.02" }))[3] == "M900 K0.02", "marlin")
+    must_fail(cmd("pa_tower"), { firmware = "rrf" }, "Firmware must be")
+    must_fail(cmd("pa_tower"), { max_pa = "3", interval = "1" }, "between 0 and 2")
+end)
+
+test("4 max volumetric flow: Prusa comb", function()
     local mock = run_command(cmd("volumetric_tower"))
     local obj = generic_checks(mock)
     check(obj.mesh.kind == "svg" and near(obj.mesh.dims.max_z, 42) and near(obj.translate.z, 0), "comb extruded to 7 x 6 mm")
@@ -424,7 +451,7 @@ test("3 max volumetric flow: Prusa comb", function()
     must_fail(cmd("volumetric_tower"), { extrusion_width = "0.1" }, "larger than the layer height")
 end)
 
-test("4 slab mass check", function()
+test("5 slab mass check", function()
     local mock = run_command(cmd("slab"))
     local obj = generic_checks(mock)
     check(#volumes_of(obj, VT.Solid, "cube") == 4 and has_text(obj, "73.7cc 93.6g"), "posts and nominal engraved")
@@ -435,7 +462,7 @@ test("4 slab mass check", function()
     must_fail(cmd("slab"), { density = "9" }, "between 0.5 and 3")
 end)
 
-test("5 infill overlap calibration", function()
+test("6 infill overlap calibration", function()
     local mock = run_command(cmd("overlap"))
     local obj = generic_checks(mock)
     local mods = volumes_of(obj, VT.Modifier)
@@ -458,7 +485,7 @@ test("5 infill overlap calibration", function()
     must_fail(cmd("overlap"), { setting = "bad key!" }, "config key")
 end)
 
-test("6 shrink bar", function()
+test("7 shrink bar", function()
     local mock = run_command(cmd("shrink_bar"))
     local obj = generic_checks(mock)
     local holes = volumes_of(obj, VT.Negative, "cylinder")
@@ -467,7 +494,7 @@ test("6 shrink bar", function()
     check(parse_data(data_line(mock)).c0 == 130, "DATA")
 end)
 
-test("7 reference coupon with wing and fins", function()
+test("8 reference coupon with wing and fins", function()
     local mock = run_command(cmd("coupon"), { xy_compensation = "-0.05", elephant_foot = "0.15", note = "PETG lot 42" })
     local obj = generic_checks(mock)
     check(#volumes_of(obj, VT.Negative, "cylinder") == 1, "hole")
@@ -484,7 +511,7 @@ test("7 reference coupon with wing and fins", function()
     must_fail(cmd("coupon"), { overhang_angle = 10 }, "between 20 and 80")
 end)
 
-test("8 stringing tower", function()
+test("9 stringing tower", function()
     local mock = run_command(cmd("stringing_tower"))
     local obj = generic_checks(mock)
     local g = gcode_lines(mock)
@@ -499,12 +526,13 @@ test("8 stringing tower", function()
     must_fail(cmd("stringing_tower"), { fan_start = 60, fan_step = 10 }, "fan is out of range")
 end)
 
-test("9 apply results", function()
+test("10 apply results", function()
     local mock = run_command(cmd("apply_results"))
     check(#mock.objects == 0 and #mock.bed.material.set_log == 0, "defaults change nothing")
-    local mock2 = run_command(cmd("apply_results"), { temperature = 245, extrusion_multiplier = "0,96", infill_overlap = "20%", solid_print_preset = true })
+    local mock2 = run_command(cmd("apply_results"), { temperature = 245, extrusion_multiplier = "0,96", infill_overlap = "20%", pressure_advance = "0.045", solid_print_preset = true })
     local m = set_values(mock2.bed.material)
     check(m.temperature == 245 and near(m.extrusion_multiplier, 0.96) and set_values(mock2.bed.print).infill_overlap == "20%", "values written")
+    check(near(m.pressure_advance_value, 0.045) and m.pressure_advance == "enabled", "pressure advance value written and mode enabled")
     local mock3 = must_fail(cmd("apply_results"), { temperature = 245, extrusion_multiplier = "2" }, "between 0.5 and 1.5")
     check(#mock3.bed.material.set_log == 0, "validation before any write")
 end)
@@ -517,7 +545,7 @@ test("tools: nozzle wipe", function()
 end)
 
 test("every command prints one DATA line with the baseline", function()
-    local expected_step = { temp_tower = "temp", flow_tower = "flow", volumetric_tower = "vol", slab = "slab", overlap = "overlap",
+    local expected_step = { temp_tower = "temp", flow_tower = "flow", pa_tower = "pa", volumetric_tower = "vol", slab = "slab", overlap = "overlap",
         shrink_bar = "bar", coupon = "coupon", stringing_tower = "string", apply_results = "apply" }
     for id, step in pairs(expected_step) do
         local mock = run_command(cmd(id))
@@ -534,7 +562,7 @@ end)
 
 test("profile.lua: tag, apply, and baseline mismatch warning", function()
     local profile = { ["Original Prusa MK4S 0.4 nozzle"] = { tag = "MK4S #3", temperature = 245, first_layer_temperature = 235,
-        extrusion_multiplier = 0.9752, filament_max_volumetric_speed = 15.3, infill_overlap = "15%", layer_height = 0.2, nozzle = 0.4 } }
+        extrusion_multiplier = 0.9752, filament_max_volumetric_speed = 15.3, infill_overlap = "15%", pressure_advance = 0.045, layer_height = 0.2, nozzle = 0.4 } }
     local mock = run_command(cmd("temp_tower"), nil, { modules = { profile = profile } })
     check(has_text(single_object(mock), "MK4S #3"), "tag from profile")
     check(parse_data(data_line(mock)).baseline_mismatch == nil, "matching baseline, no warning")
@@ -547,6 +575,7 @@ test("profile.lua: tag, apply, and baseline mismatch warning", function()
     local mock3 = run_command(cmd("apply_profile"), nil, { modules = { profile = profile } })
     local m = set_values(mock3.bed.material)
     check(m.temperature == 245 and near(m.extrusion_multiplier, 0.9752) and set_values(mock3.bed.print).infill_overlap == "15%", "apply from profile")
+    check(near(m.pressure_advance_value, 0.045) and m.pressure_advance == "enabled", "pressure advance from profile")
     must_fail(cmd("apply_profile"), nil, "no entry for printer")
 end)
 

@@ -2,7 +2,7 @@ info = {
     id = "shrink_bar",
     type = "project.plugin",
     title = "Shrinkage and XY growth bar",
-    menu = "Filament Dial-In/6. Shrinkage and growth bar",
+    menu = "Filament Dial-In/7. Shrinkage and growth bar",
     params = {
         { name = "length", label = "Bar length X [mm]", type = "int", default = 150 },
         { name = "width", label = "Bar width Y [mm]", type = "int", default = 20 },
