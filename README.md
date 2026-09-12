@@ -56,6 +56,7 @@ menu follows the procedure).
 | 13. Apply dialed-in values | Nothing printed. Writes typed values into the selected presets and reads them back | The log or the helper's drawer | the presets |
 | Tools / Apply values from profile.lua | Nothing printed. Writes the values the sheet saved for the selected printer | The log or the helper's drawer | the presets |
 | Tools / Periodic nozzle wipe G-code | Nothing printed. Inserts a brush-wipe routine every N mm of height | | production prints, once a brush is fitted |
+| Tools / Open the dial-in sheet | Nothing printed. Asks the helper to open the sheet in your browser (it reads PrusaSlicer's output); with no helper it only logs the address | | the sheet |
 
 Every command that sweeps something takes the same five fields, because the
 alpha11 param dialog has no dropdowns and no fields that appear only when they
@@ -284,17 +285,52 @@ and:
 
 No rescan is needed after changing `profile.lua`; it is read on every Run.
 
-### The helper: running the sheet beside PrusaSlicer
+### The helper: one button
 
 `helper/dialin_helper.py` is a single standard-library Python script for the
-PC that drives the printers. Start it from the repo folder:
+PC that drives the printers. You do not have to type anything to run it:
+
+1. Get this repository once: **Code > Download ZIP** on GitHub and unpack it
+   anywhere, or `git clone https://github.com/Ripley-Dynamics/PrusaSlicer-3.0-Calibration-Suite`.
+2. Double-click **`Dial-In Sheet.cmd`** in that folder (Windows). On macOS or
+   Linux run **`./dialin-sheet.sh`** instead. Python 3 has to be installed; on
+   Windows the file says so and waits if it is not, and the installer's
+   "Add python.exe to PATH" box has to be ticked.
+
+The window minimises itself and does this, in order:
+
+1. **updates itself**: it downloads `helper/dialin_helper.py` from `main`,
+   checks that it is valid Python, and if it differs it overwrites its own file
+   and starts the new version once (`helper updated, restarting`);
+2. **installs the latest plugin**: the same download as **Load latest plugin**
+   below, into PrusaSlicer's user plugins folder, keeping your `profile.lua`;
+3. **opens the dial-in sheet** at `http://127.0.0.1:8765/` in your browser;
+4. **starts PrusaSlicer** when it knows where it is (installed builds, and
+   portable zips unpacked in Downloads or on the Desktop), so its output lands
+   in the sheet's log drawer. If it does not know, it says so and the sheet's
+   **Paths…** button sets the path.
+
+Steps 1 and 2 need the network; offline they log one line and are skipped, and
+the sheet, the plugin that is already installed and PrusaSlicer still start.
+Closing the window stops the helper (PrusaSlicer is left running).
+
+Inside PrusaSlicer, **Plugins > Filament Dial-In > Tools > Open the dial-in
+sheet** brings the sheet back if you closed the tab. It works when PrusaSlicer
+was started by the helper, which is what reads that request out of its output;
+started any other way, the command only prints the address into the log.
+
+The terminal way still works, and is what the buttons in the sheet do:
 
 ```
-python3 helper/dialin_helper.py
+python3 helper/dialin_helper.py --auto     # exactly what the one button runs
+python3 helper/dialin_helper.py            # just serve the sheet, no updates
+python3 helper/dialin_helper.py --update   # install the latest plugin and exit
+python3 helper/dialin_helper.py --launch --prusaslicer ~/PrusaSlicer-alpha11
 ```
 
-It opens the sheet at `http://127.0.0.1:8765/` and adds a status bar and a
-log drawer to it:
+with `--port`, `--no-browser`, `--plugins-dir` and `--prusaslicer` as before.
+
+The sheet gets a status bar and a log drawer from the helper:
 
 - **Install from this checkout** copies the plugin into PrusaSlicer's user
   plugins folder (detected from the PrusaSlicer-alpha, -beta or release data
@@ -306,10 +342,10 @@ log drawer to it:
   commit is recorded in `INSTALLED.json` in the bundle and shown in the status
   bar (`bundle v0.2.0 · 06fb57c`). The same thing from the command line:
   `python3 helper/dialin_helper.py --update`, which installs and exits.
-  The helper script cannot replace itself while it is running, so if the
-  download contains a newer `dialin_helper.py` it is written beside it as
-  `helper/dialin_helper.py.new` and the sheet asks you to close the helper,
-  swap the file and start it again.
+  If the download holds a newer `dialin_helper.py` the helper replaces its own
+  file with it, but it cannot restart itself while it is answering that request
+  (this process holds the socket), so the sheet says: close the helper window
+  and double-click `Dial-In Sheet.cmd` again.
 - **Save profile.lua** writes the sheet's profile straight into the bundle.
 - **Launch PrusaSlicer** starts it as a child process and streams its
   output into the log drawer. The path is detected (installed builds, and
@@ -411,9 +447,11 @@ preview.
 ```
 prusaslicer-filament-dialin/
   README.md                          this file
+  Dial-In Sheet.cmd                  Windows: the one thing to double-click
+  dialin-sheet.sh                    macOS/Linux: the same, in the foreground
   run-tests.sh                       runs the suite
   wizard/index.html                  the step-by-step dial-in sheet (offline page)
-  helper/dialin_helper.py            serves the sheet beside PrusaSlicer, installs the bundle, streams its output
+  helper/dialin_helper.py            serves the sheet beside PrusaSlicer, updates itself and the bundle, streams its output
   com.ripleydynamics.filament-dialin/   the bundle to copy into the user plugins folder
     manifest.json
     00_nozzle_clean.lua              0. hot purge and cold pull before testing
@@ -433,6 +471,7 @@ prusaslicer-filament-dialin/
     13_apply_results.lua             13. write values into presets
     tools_apply_profile.lua          Tools: write values from profile.lua
     tools_nozzle_wipe.lua            Tools: periodic nozzle wipe G-code
+    tools_open_sheet.lua             Tools: ask the helper to open the dial-in sheet
     profile.lua                      (optional) written by the sheet or the helper
     THIRD_PARTY.md                   every third-party notice and design credit, in one place
     assets/prusa/                    Prusa's calibration STLs and comb SVG (AGPL-3.0-only)

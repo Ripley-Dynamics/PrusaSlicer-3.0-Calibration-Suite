@@ -813,7 +813,6 @@ function helperBar(){
     <button class="btn small" type="button" data-helper="profile">Save profile.lua</button>
     <button class="btn small primary" type="button" data-helper="launch" ${h.running?"disabled":""}>Launch PrusaSlicer</button>
     ${h.looks_like_2x?`<span class="st" style="flex-basis:100%;color:var(--warn)">This PrusaSlicer path does not look like a 3.0 alpha. Use Paths… to point at the alpha's folder and its plugins folder (Plugins › Show User Plugins Folder inside the alpha).</span>`:""}
-    ${h.helper_outdated?`<span class="st" style="flex-basis:100%;color:var(--warn)">The helper program itself has a newer version, saved next to it as helper/dialin_helper.py.new: close the helper, replace helper/dialin_helper.py with it and start it again.</span>`:""}
   </div>`;
 }
 async function helperAction(what, el){
@@ -836,6 +835,10 @@ async function loadLatest(btn){
   try {
     const r = (await api("/api/update", {})).result || {};
     const bits = [r.version ? "v" + r.version : null, r.commit_short].filter(Boolean).join(" · ");
+    // The helper replaced its own file but cannot re-exec while it is serving
+    // this request, so it only reports the restart. No reload: the page comes
+    // back when the helper does.
+    if (r.helper_restart) { toast("helper updated: close the helper window and double-click Dial-In Sheet.cmd again"); render(); return; }
     toast("Loaded latest plugin" + (bits ? ": " + bits : "") + (r.same_commit ? ", reinstalled" : ""));
     if (r.changed) { reloading = true; setTimeout(() => location.reload(), 1400); return; }
     render();

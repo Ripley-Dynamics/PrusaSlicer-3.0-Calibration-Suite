@@ -8,6 +8,12 @@ sheet so the plugin's numbers and errors show up there.
 
 Standard library only. Python 3.8 or newer.
 
+Double-click "Dial-In Sheet.cmd" on Windows, or run ./dialin-sheet.sh on
+macOS/Linux: both start this script with --auto, which updates the helper
+itself, installs the latest plugin from GitHub, opens the sheet and starts
+PrusaSlicer. The terminal way still works:
+
+    python3 helper/dialin_helper.py --auto         # what the one button does
     python3 helper/dialin_helper.py                # auto-detect everything
     python helper\\dialin_helper.py --prusaslicer "C:\\Users\\me\\Downloads\\PrusaSlicer-3.0.0-alpha11\\PrusaSlicer-3.0.0-alpha11"
     python3 helper/dialin_helper.py --plugins-dir ~/.config/PrusaSlicer-alpha/lua
@@ -43,12 +49,14 @@ REPO = HERE.parent
 SHEET = REPO / "wizard" / "index.html"
 BUNDLE_SRC = REPO / BUNDLE_ID
 HELPER_FILE = Path(__file__).resolve()
-HELPER_NEW = HELPER_FILE.parent / (HELPER_FILE.name + ".new")
 
 GITHUB_REPO = "Ripley-Dynamics/PrusaSlicer-3.0-Calibration-Suite"
 GITHUB_BRANCH = "main"
 ZIP_URL = f"https://codeload.github.com/{GITHUB_REPO}/zip/refs/heads/{GITHUB_BRANCH}"
 COMMITS_URL = f"https://api.github.com/repos/{GITHUB_REPO}/commits/{GITHUB_BRANCH}"
+# Single files, for the helper updating itself. DIALIN_RAW_BASE overrides the
+# base (a file:// folder holding helper/dialin_helper.py works) for testing.
+RAW_BASE = f"https://raw.githubusercontent.com/{GITHUB_REPO}/{GITHUB_BRANCH}"
 USER_AGENT = "dialin-helper"
 COPY_IGNORE = shutil.ignore_patterns("*.pyc", ".DS_Store", "__pycache__")
 KEEP_FILE = "profile.lua"          # never overwritten by an install or an update
@@ -175,6 +183,11 @@ def http_get(url, timeout=60, accept="*/*"):
         return r.read()
 
 
+def helper_raw_url():
+    base = os.environ.get("DIALIN_RAW_BASE") or RAW_BASE
+    return base.rstrip("/") + "/helper/" + HELPER_FILE.name
+
+
 def latest_commit():
     """sha, date and subject of the branch head. Unauthenticated and
     rate-limited, so a failure here only costs the decoration."""
@@ -226,6 +239,46 @@ def copy_bundle(src, dst):
     return keep is not None
 
 
+# ---------------------------------------------------------------- self-update
+def newline_normal(data):
+    """A CRLF-insensitive view of a file, so a checkout that stored the helper
+    with Windows line endings does not count as different from the published
+    one (which would replace and restart it on every start)."""
+    return data.replace(b"\r\n", b"\n") if data is not None else None
+
+
+def replace_helper(data):
+    """Overwrite the running helper program with `data`. Python read and
+    compiled this file at startup, so replacing it now is safe; the new code is
+    used from the next start. Returns True when the file on disk changed.
+    Raises when the download is not valid Python, so a broken or truncated
+    download never replaces a working helper."""
+    text = data.decode("utf-8")
+    compile(text, str(HELPER_FILE), "exec")
+    if newline_normal(data) == newline_normal(read_bytes(HELPER_FILE)):
+        return False
+    tmp = HELPER_FILE.with_name(f"{HELPER_FILE.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_bytes(data)
+        os.replace(tmp, HELPER_FILE)   # same folder, so atomic on Windows too
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+    return True
+
+
+def self_update(log):
+    """Fetch the published helper program and replace this file when it
+    differs. Returns True when this program has to restart to run the new code.
+    Never fatal: offline, a 404 or a broken download only costs the update."""
+    url = helper_raw_url()
+    try:
+        return replace_helper(http_get(url, timeout=30))
+    except Exception as e:
+        log(f"self-update skipped ({e})")
+        return False
+
+
 # ---------------------------------------------------------------- state
 class Helper:
     def __init__(self, args):
@@ -239,7 +292,10 @@ class Helper:
         self.clients = []
         self.lock = threading.Lock()
         self.seq = 0
-        self._helper_outdated = False
+        self.auto = bool(getattr(args, "auto", False))
+        self.port = getattr(args, "port", 8765)
+        self.url = f"http://127.0.0.1:{self.port}/"
+        self.helper_restart = False
         save_config({"plugins_dir": str(self.plugins_dir) if self.plugins_dir_set() else "", "prusaslicer": self.prusaslicer or ""})
 
     # -- bundle
@@ -270,14 +326,6 @@ class Helper:
         except Exception:
             return {}
 
-    def helper_outdated(self):
-        """True when an update found a newer helper program than the one that is
-        running, and the replacement is still waiting as dialin_helper.py.new."""
-        if not HELPER_NEW.exists():
-            return self._helper_outdated
-        new = read_bytes(HELPER_NEW)
-        return new is not None and new != read_bytes(HELPER_FILE)
-
     def status(self):
         dst = self.bundle_dst
         stamp = self.installed_stamp()
@@ -293,7 +341,7 @@ class Helper:
             "bundle_installed_version": self.manifest_version(dst) if dst else None,
             "bundle_installed_commit": commit[:7] if isinstance(commit, str) else None,
             "bundle_installed_at": stamp.get("installed_at"),
-            "helper_outdated": self.helper_outdated(),
+            "auto": self.auto,
             "profile_exists": bool(dst) and (dst / "profile.lua").exists(),
             "prusaslicer": self.prusaslicer,
             "prusaslicer_exists": bool(self.prusaslicer) and Path(self.prusaslicer).exists(),
@@ -364,15 +412,18 @@ class Helper:
             except Exception as e:
                 checkout_error = f"could not refresh {REPO}: {e}"
 
-            # The running program cannot replace itself: leave the new one beside it.
+            # The running program can replace its own file; it cannot re-exec
+            # from inside a request, because this process holds the socket. So
+            # the file is replaced and the sheet is told to restart the helper.
             new_helper = src / top / "helper" / HELPER_FILE.name
-            outdated = new_helper.is_file() and read_bytes(new_helper) != read_bytes(HELPER_FILE)
-            if outdated:
+            restart = False
+            if new_helper.is_file():
                 try:
-                    HELPER_NEW.write_bytes(new_helper.read_bytes())
+                    restart = replace_helper(new_helper.read_bytes())
                 except Exception as e:
-                    checkout_error = checkout_error or f"could not write {HELPER_NEW}: {e}"
-            self._helper_outdated = bool(outdated)
+                    checkout_error = checkout_error or f"could not replace {HELPER_FILE}: {e}"
+            if restart:
+                self.helper_restart = True
 
             head = latest_commit()
             short = (head["commit"] or "")[:7] or None
@@ -390,10 +441,10 @@ class Helper:
             if kept:
                 line += "; kept profile.lua"
             self.emit("helper", line)
-            if outdated:
-                self.emit("helper", f"the download's helper program differs from the running one: wrote it beside "
-                                    f"this one as {HELPER_NEW.name} -- close the helper, replace {HELPER_FILE.name} "
-                                    f"with it and start it again")
+            if restart:
+                starter = "Dial-In Sheet.cmd" if platform.system() == "Windows" else "dialin-sheet.sh"
+                self.emit("helper", f"helper updated: {HELPER_FILE.name} was replaced with a newer one -- "
+                                    f"close this helper window and start {starter} again")
             if checkout_error:
                 self.emit("warning", checkout_error)
             return {
@@ -409,8 +460,7 @@ class Helper:
                 "same_commit": same,
                 "files_changed": changed,
                 "changed": bool(changed),
-                "helper_outdated": bool(outdated),
-                "helper_new_path": str(HELPER_NEW) if outdated else None,
+                "helper_restart": bool(restart),
                 "checkout_error": checkout_error,
                 "line": line,
             }
@@ -450,10 +500,26 @@ class Helper:
             note = " (0xC0000409, a Windows fail-fast crash inside PrusaSlicer; note what you did last)"
         self.emit("helper", f"PrusaSlicer exited with code {code}{note}")
 
+    def open_sheet(self):
+        """Tools > Open the dial-in sheet in the plugin asked for the sheet. The
+        plugin has no network or process API, so it prints a marker with the
+        default URL; this helper's own port is the one that counts."""
+        try:
+            opened = webbrowser.open(self.url)
+        except Exception as e:
+            self.emit("warning", f"could not open {self.url}: {e}")
+            return
+        if not opened:
+            self.emit("warning", f"no browser would open; the sheet is at {self.url}")
+            return
+        self.emit("helper", f"opened the sheet from PrusaSlicer ({self.url})")
+
     def ingest(self, line):
         if PREFIX in line:
             body = line.split(PREFIX, 1)[1]
-            if body.startswith("DATA "):
+            if body.startswith("OPEN_SHEET"):
+                self.open_sheet()
+            elif body.startswith("DATA "):
                 self.emit("data", body, parse_data(body[5:]))
             elif body.lower().startswith("warning") or "could not set" in body:
                 self.emit("warning", body)
@@ -614,6 +680,93 @@ class Handler(BaseHTTPRequestHandler):
             self._json({"ok": False, "error": str(e), "status": h.status()}, 400)
 
 
+# ---------------------------------------------------------------- startup
+def stage(name, text):
+    """One line per startup stage, in the same shape as the event log, because
+    the --auto window is minimised and gets read only when something is wrong."""
+    print(f"{name:8} {text}", flush=True)
+
+
+def serve(server, helper):
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        p = helper.process
+        if p is not None and p.poll() is None:
+            print("PrusaSlicer is still running; leaving it open")
+
+
+def auto(args):
+    """The one-button path: update this program, install the latest plugin,
+    serve the sheet, open it in the browser and start PrusaSlicer. Every stage
+    logs one line and only the server is allowed to be fatal."""
+    print("dial-in helper: starting", flush=True)
+
+    # 1. this program itself. A running script can overwrite its own file, so
+    #    the new code is picked up by re-launching with --no-self-update.
+    skipped = []
+    if args.no_self_update:
+        stage("helper", "self-update done, continuing")
+    elif self_update(skipped.append):
+        stage("helper", "helper updated, restarting")
+        # Wait for the new one so the console window (and Dial-In Sheet.cmd's
+        # "|| pause") stays tied to a running helper; its exit code is ours.
+        child = subprocess.Popen([sys.executable, str(HELPER_FILE), *sys.argv[1:], "--no-self-update"])
+        try:
+            sys.exit(child.wait())
+        except KeyboardInterrupt:
+            child.terminate()
+            sys.exit(child.wait())
+    elif skipped:
+        stage("helper", skipped[0])       # offline, 404 or a broken download
+    else:
+        stage("helper", "up to date")
+
+    helper = Helper(args)
+    Handler.helper = helper
+
+    # 2. the plugin. Offline, whatever is already installed keeps working.
+    if not helper.plugins_dir_set():
+        stage("plugin", "no PrusaSlicer user data folder found; start PrusaSlicer 3.0 once, "
+                        "then set the folder with Paths... in the sheet")
+    else:
+        try:
+            helper.update_from_github()
+        except Exception as e:
+            stage("plugin", f"could not load the latest plugin ({e})")
+            try:
+                helper.install()
+            except Exception as e2:
+                stage("plugin", f"could not install the bundle from this folder either ({e2})")
+
+    # 3. the sheet.
+    try:
+        server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    except OSError as e:
+        stage("sheet", f"port {args.port} is in use ({e}); the helper is probably already "
+                       f"running, opening {helper.url}")
+        if not args.no_browser:
+            webbrowser.open(helper.url)
+        return
+    stage("sheet", helper.url + ("" if args.no_browser else " (opening it in your browser)"))
+    if not args.no_browser:
+        threading.Timer(0.5, lambda: webbrowser.open(helper.url)).start()
+
+    # 4. PrusaSlicer, so its output lands in the sheet's log.
+    if helper.prusaslicer:
+        try:
+            helper.launch()          # emits "launched <exe> (pid ...)"
+        except Exception as e:
+            stage("slicer", f"could not start PrusaSlicer ({e})")
+    else:
+        stage("slicer", "not found; open Paths... in the sheet and point it at PrusaSlicer 3.0")
+
+    print("dial-in helper: ready. Leave this window minimised; close it to stop the helper.", flush=True)
+    serve(server, helper)
+
+
 def main():
     ap = argparse.ArgumentParser(description="Run the dial-in sheet beside PrusaSlicer.")
     ap.add_argument("--port", type=int, default=8765)
@@ -623,7 +776,15 @@ def main():
     ap.add_argument("--launch", action="store_true", help="launch PrusaSlicer immediately")
     ap.add_argument("--update", action="store_true",
                     help="fetch the latest plugin from GitHub, install it and exit")
+    ap.add_argument("--auto", action="store_true",
+                    help="what Dial-In Sheet.cmd does: update this helper and the plugin, "
+                         "serve the sheet, open it and start PrusaSlicer")
+    ap.add_argument("--no-self-update", action="store_true", help=argparse.SUPPRESS)
     args = ap.parse_args()
+
+    if args.auto:
+        auto(args)
+        return
 
     Handler.helper = Helper(args)
     if args.update:
@@ -647,14 +808,7 @@ def main():
             print("launch failed:", e)
     if not args.no_browser:
         threading.Timer(0.5, lambda: webbrowser.open(url)).start()
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        p = Handler.helper.process
-        if p is not None and p.poll() is None:
-            print("PrusaSlicer is still running; leaving it open")
+    serve(server, Handler.helper)
 
 
 if __name__ == "__main__":

@@ -247,7 +247,7 @@ test("every file evaluates without api/require (discovery scan)", function()
     for _, m in ipairs(modules) do
         check(m.ok, m.path .. " failed at discovery: " .. tostring(m.err))
     end
-    check(#commands == 17, "expected 17 commands, found " .. #commands)
+    check(#commands == 18, "expected 18 commands, found " .. #commands)
 end)
 
 test("command metadata is valid for alpha11 and the menu reads 0..13 in filename order", function()
@@ -811,6 +811,20 @@ test("tools: nozzle wipe", function()
     check(#mock.objects == 0 and #mock.bed.gcodes == 50 and near(mock.bed.gcodes[1].z, 5.1), "50 wipes")
     local g = mock.bed.gcodes[1].gcode
     check(g:find("G1 X240 Y-3 F9000", 1, true) and g:find("G1 X210 F3000", 1, true) and g:sub(-17) == "; end nozzle wipe", "wipe routine")
+end)
+
+test("tools: open the dial-in sheet", function()
+    local mock = run_command(cmd("open_sheet"))
+    check(#mock.objects == 0 and #mock.bed.gcodes == 0 and #mock.bed.print.set_log == 0,
+        "open_sheet must not touch the project or the presets")
+    local marker, hint = false, false
+    for _, l in ipairs(mock.prints) do
+        if l == "[filament-dialin] OPEN_SHEET http://127.0.0.1:8765/" then marker = true end
+        if l:find("Dial-In Sheet.cmd", 1, true) then hint = true end
+    end
+    check(marker, "the helper's OPEN_SHEET marker was not printed verbatim: " .. table.concat(mock.prints, " | "))
+    check(hint, "no fallback hint for a sheet that did not open")
+    check(data_line(mock) == nil, "open_sheet must not print a DATA line")
 end)
 
 test("every command prints one DATA line with the baseline", function()
