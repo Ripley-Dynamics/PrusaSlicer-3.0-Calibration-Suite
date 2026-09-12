@@ -149,7 +149,7 @@ end
 
 -- "Original Prusa MK4S 0.4 nozzle" -> "MK4S 0.4". Meant to fit on a coupon.
 function M.short_printer_tag(name, max_len)
-    max_len = max_len or 14
+    max_len = max_len or 18
     local s = name
     s = s:gsub("^Original Prusa ", "")
     s = s:gsub("^Prusa ", "")
@@ -188,7 +188,58 @@ local function encode_value(v)
     end
 end
 
-function M.data(step, fields)
+-- Preset values every DATA line carries, so the sheet can tell when the
+-- printer, layer height or profile changed between steps.
+M.BASELINE_KEYS = {
+    { "print", "layer_height", "layer_height" },
+    { "print", "perimeters", "p_perimeters" },
+    { "print", "top_solid_layers", "p_top_solid_layers" },
+    { "print", "bottom_solid_layers", "p_bottom_solid_layers" },
+    { "print", "perimeter_speed", "p_perimeter_speed" },
+    { "print", "infill_speed", "p_infill_speed" },
+    { "material", "temperature", "p_temperature" },
+    { "material", "first_layer_temperature", "p_first_layer_temperature" },
+    { "material", "extrusion_multiplier", "p_extrusion_multiplier" },
+    { "material", "filament_max_volumetric_speed", "p_max_volumetric_speed" },
+    { "material", "filament_density", "p_density" },
+}
+
+function M.baseline(bed)
+    local out = { printer = M.printer_name(bed), nozzle = M.nozzle(bed) }
+    local ok_p, print_cfg = pcall(function() return bed:print_presets() end)
+    local ok_m, material = pcall(function() return bed:material_presets(0) end)
+    for _, k in ipairs(M.BASELINE_KEYS) do
+        local box = (k[1] == "print") and (ok_p and print_cfg) or (ok_m and material)
+        if box then
+            local v = M.read_number(box, k[2])
+            if v ~= nil then
+                out[k[3]] = v
+            end
+        end
+    end
+    if out.layer_height == nil then
+        out.layer_height = M.layer_height(bed)
+    end
+    -- profile.lua may record the layer height and nozzle the earlier steps used.
+    local entry = M.profile(bed)
+    if entry then
+        local mismatch = {}
+        if type(entry.layer_height) == "number" and math.abs(entry.layer_height - out.layer_height) > 1e-6 then
+            mismatch[#mismatch + 1] = string.format("layer height %s (profile) vs %s (now)", M.fmt(entry.layer_height, 3), M.fmt(out.layer_height, 3))
+        end
+        if type(entry.nozzle) == "number" and math.abs(entry.nozzle - out.nozzle) > 1e-6 then
+            mismatch[#mismatch + 1] = string.format("nozzle %s (profile) vs %s (now)", M.fmt(entry.nozzle, 2), M.fmt(out.nozzle, 2))
+        end
+        if #mismatch > 0 then
+            out.baseline_mismatch = table.concat(mismatch, "; ")
+            M.log("WARNING: this print does not match the earlier steps: " .. out.baseline_mismatch .. ". Change one variable at a time.")
+        end
+    end
+    return out
+end
+
+function M.data(bed, step, fields)
+    fields = M.merge(M.baseline(bed), fields)
     local keys = {}
     for k in pairs(fields) do
         keys[#keys + 1] = k
@@ -322,6 +373,54 @@ function M.merge(...)
         end
     end
     return out
+end
+
+-- Series of values between min and max, chosen either by interval or by
+-- number of steps. Returns the list (ascending) and the effective interval.
+--   o.min, o.max        bounds (inclusive when the interval divides evenly)
+--   o.by_interval       true: use o.interval; false: use o.count
+--   o.interval, o.count
+--   o.integer           round every value to a whole number
+--   o.max_count         safety cap (default 30)
+function M.range(o)
+    local lo, hi = M.num(o.min, "minimum"), M.num(o.max, "maximum")
+    assert(hi > lo, "Maximum must be greater than minimum")
+    local values, interval = {}, nil
+    if o.by_interval then
+        interval = M.num(o.interval, "interval")
+        assert(interval > 0, "Interval must be positive")
+        local n = math.floor((hi - lo) / interval + 1e-9) + 1
+        assert(n >= 2, "The interval must fit at least twice between minimum and maximum")
+        assert(n <= (o.max_count or 30), "Too many steps (" .. n .. "); use a larger interval")
+        for i = 1, n do
+            values[i] = lo + (i - 1) * interval
+        end
+    else
+        local n = M.int(o.count, "number of steps")
+        assert(n >= 2 and n <= (o.max_count or 30), "Number of steps must be between 2 and " .. (o.max_count or 30))
+        interval = (hi - lo) / (n - 1)
+        for i = 1, n do
+            values[i] = lo + (i - 1) * interval
+        end
+    end
+    if o.integer then
+        for i, v in ipairs(values) do
+            values[i] = math.floor(v + 0.5)
+        end
+    else
+        for i, v in ipairs(values) do
+            values[i] = math.floor(v * 1000 + 0.5) / 1000
+        end
+    end
+    return values, interval
+end
+
+function M.join(values, decimals)
+    local parts = {}
+    for i, v in ipairs(values) do
+        parts[i] = M.fmt(v, decimals or 2)
+    end
+    return table.concat(parts, ",")
 end
 
 -- Standard "make this object print solid" object params.

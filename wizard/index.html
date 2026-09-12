@@ -146,6 +146,8 @@ table.vals tr:last-child td{border-bottom:0}
 .log li.ev-slicer{color:var(--ink-3)}
 body.has-log main{padding-bottom:42vh}
 @media (max-width:760px){.log{left:0}}
+.warnbar{background:var(--warn-soft);border-left:3px solid var(--warn);color:var(--ink);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13.5px;margin:0 0 16px}
+.warnbar + .warnbar{margin-top:-8px}
 .rail-toggle{display:none}
 @media (max-width:760px){
   .app{grid-template-columns:1fr}
@@ -211,12 +213,12 @@ function examplePrinter(){
     filament: "Prusament PETG Jet Black", density: 1.27, baseMultiplier: 1.0, nozzle: 0.4, layer: 0.2,
     steps: {
       temp: { chosen: 245, notes: "Gloss even from 250 down; 240 wing started to fray", done: true },
-      flow: { chosen: 98, done: true },
+      flow: { pass1: 100, pass2: 98, done: true },
       vol:  { clean: 18, done: true },
-      sweep:{ chosen: 15, done: true },
-      slab: { x: 60, y: 60, z: 20, posts: true, measured: 94.10, done: true },
+      slab: { x: 60, y: 60, z: 20, posts: true, measured: 94.10, printed_em: 0.98, done: true },
+      overlap:{ chosen: 15, done: true },
       bar:  { c0: 130, w0: 20, d0: 6, near: 123.55, far: 135.50, w: 20.09, d: 5.86, done: true },
-      coupon:{ l: 49.97, w: 24.98, h: 10.02, hole: 9.94, foot: 0.15, done: false },
+      coupon:{ l: 49.97, w: 24.98, h: 10.02, hole: 9.94, foot: 0.15, overhang: "45° wing clean, slight droop at the tip", fins: "0.8 fin has gaps, 1.2 and 1.6 fine", done: false },
       string:{ temp: 245, fan: 30, done: false },
       apply:{ done: false }
     }
@@ -239,17 +241,19 @@ function sd(p, id){ p.steps[id] = p.steps[id] || {}; return p.steps[id]; }
 const num = v => (v === "" || v === null || v === undefined || isNaN(+v)) ? null : +v;
 const f = (v, d) => v === null || v === undefined || !isFinite(v) ? "—" : (+v).toFixed(d);
 function extrusionArea(w, h){ return (w - h) * h + Math.PI * (h / 2) ** 2; }
-function multiplierAfterFlow(p){ const c = num(sd(p,"flow").chosen); return c ? p.baseMultiplier * c / 100 : p.baseMultiplier; }
+function flowChosen(p){ const f = sd(p,"flow"); return num(f.pass2) ?? num(f.pass1); }
+function multiplierAfterFlow(p){ const c = flowChosen(p); return c ? p.baseMultiplier * c / 100 : p.baseMultiplier; }
 function slabNominal(p){
   const s = sd(p,"slab"); const x = num(s.x) ?? 60, y = num(s.y) ?? 60, z = num(s.z) ?? 20;
   let mm3 = x * y * z; if (s.posts !== false) mm3 += 4 * 6 * 6 * 12;
   return { cm3: mm3 / 1000, g: mm3 / 1000 * (num(p.density) ?? 1.27) };
 }
+function slabBaseMultiplier(p){ return num(sd(p,"slab").printed_em) ?? multiplierAfterFlow(p); }
 function multiplierAfterSlab(p){
   const m = num(sd(p,"slab").measured); const n = slabNominal(p);
-  return m ? multiplierAfterFlow(p) * n.g / m : null;
+  return m ? slabBaseMultiplier(p) * n.g / m : null;
 }
-function finalMultiplier(p){ return multiplierAfterSlab(p) ?? (num(sd(p,"flow").chosen) ? multiplierAfterFlow(p) : null); }
+function finalMultiplier(p){ return multiplierAfterSlab(p) ?? (flowChosen(p) ? multiplierAfterFlow(p) : null); }
 function barResult(p){
   const b = sd(p,"bar"); const c0 = num(b.c0) ?? 130, w0 = num(b.w0) ?? 20, d0 = num(b.d0) ?? 6;
   const near = num(b.near), far = num(b.far), w = num(b.w), d = num(b.d);
@@ -263,47 +267,49 @@ function barResult(p){
 function volLimit(p){ const c = num(sd(p,"vol").clean); return c ? c * 0.85 : null; }
 
 // ---------- steps ----------
+const BED = "Bed: add a new build plate (the + next to the bed tabs) and select it before running. Towers keep their own per-layer G-code on their bed.";
+const SEL = (unit, intervalDefault, countDefault) => [["Choose by interval (on) / by sections (off)","on"],["Interval",intervalDefault+unit],["Number of sections (when interval is off)",String(countDefault)]];
 const STEPS = [
   { id:"temp", n:1, name:"Temperature tower", cmd:"1. Temperature tower",
-    purpose:"Find the coolest temperature that still bonds layers and holds an overhang. Thick solid parts stay warm between layers, so lean toward the cool end of what looks good.",
-    run:p=>[["Bottom section temperature","260"],["Temperature drop per section","5"],["Number of sections","6"],["Section height","10"],["Print at 100% infill","on"],["Add overhang wings","on"],["Printer tag",p.tag]],
-    look:["Bands are engraved with their temperature on the front; hottest at the bottom.","Reject bands with frayed overhang wings, dull matte surface (too cool) or drooping corners and glassy blobs (too hot).","Snap the tower at a band boundary: the coolest band that does not break cleanly is your floor."],
+    purpose:"Find the coolest temperature that still bonds layers and holds Prusa's bridge and overhang features. Thick solid parts stay warm between layers, so lean toward the cool end of what looks good. This is PrusaSlicer's own calibration model, printed solid.",
+    run:p=>[["Hottest section (bottom)","260"],["Coolest section (top)","235"],...SEL(" °C","5",6),["Print at 100% infill","on"],["Printer tag",p.tag]],
+    look:["Bands are 10 mm tall and engraved with their temperature at the left of the front face; hottest at the bottom.","Reject bands with sagging bridges, frayed overhangs, a dull matte surface (too cool) or drooping corners and glassy blobs (too hot).","Snap the tower at a band boundary: the coolest band that does not break cleanly is your floor."],
     fields:[{k:"chosen",label:"Chosen temperature",unit:"°C",type:"number",step:1},{k:"notes",label:"Notes",type:"text",wide:true}],
     result:p=>{const t=num(sd(p,"temp").chosen);return[
       {l:"Nozzle temperature",v:t?f(t,0)+" °C":"—",big:!!t},
       {l:"First layer temperature",s:"Prusa's PETG profile runs the first layer 10 °C cooler",v:t?f(t-10,0)+" °C":"—"}];}},
-  { id:"flow", n:2, name:"Flow tower (M221)", cmd:"2. Flow tower (M221)",
-    purpose:"Get the extrusion multiplier into the right neighbourhood with a coarse M221 sweep at 100% infill. The slab in step 5 refines it by weight.",
-    run:p=>[["Bottom section flow","104"],["Flow drop per section","2"],["Number of sections","7"],["Section height","10"],["Printer tag",p.tag]],
-    look:["Look at the top of each band with a raking light: ridges and a shiny scalloped surface mean too much flow, pinholes between lines mean too little.","Measure each band: nominal 30.00 × 16.00 mm. Over-extruded bands grow.","Pick the highest flow that is still flat. Add M221 S100 to the printer's end G-code; M221 persists on the machine."],
-    fields:[{k:"chosen",label:"Chosen flow",unit:"%",type:"number",step:1},{k:"width",label:"Width of that band (X)",unit:"mm",type:"number",step:0.01},{k:"depth",label:"Depth of that band (Y)",unit:"mm",type:"number",step:0.01}],
-    result:p=>{const d=sd(p,"flow");const m=num(d.chosen)?multiplierAfterFlow(p):null;const w=num(d.width),dp=num(d.depth);return[
-      {l:"Extrusion multiplier after this step",s:"current "+f(p.baseMultiplier,4)+" × chosen % / 100",v:m?f(m,4):"—",big:!!m},
-      {l:"XY growth per side at that band",s:"from width and depth against 30 × 16 mm",v:(w!==null||dp!==null)?f(((w!==null?w-30:0)+(dp!==null?dp-16:0))/((w!==null?1:0)+(dp!==null?1:0))/2,3)+" mm":"—",muted:true}];}},
-  { id:"vol", n:3, name:"Max volumetric flow", cmd:"3. Max volumetric flow tower",
-    purpose:"Find how fast this hotend can actually melt PETG. Solid infill on a fast printer under-extrudes silently when the limit is too high, and the part loses mass and strength.",
-    run:p=>[["Bottom section flow","6"],["Top section flow","24"],["Number of sections","7"],["Section height","10"],["Extrusion width","(blank)"],["Set preset limits to unlimited","on"],["Printer tag",p.tag]],
-    look:["The command lifts the filament's volumetric limit and layer-time slowdown for this print only; the presets show as modified afterwards.","Bands are labelled in mm³/s. Look for the first band with gaps between infill lines, a rough matte surface, or extruder clicking.","Take the highest clean band."],
+  { id:"flow", n:2, name:"Flow staircase (M221)", cmd:"2. Flow staircase (M221)",
+    purpose:"OrcaSlicer's two-pass flow method, built as a staircase because PrusaSlicer cannot set flow per object: every tread is a patch printed at its own M221 value, and you judge each tread's top surface. Pass 1 sweeps 80 to 120% in 5% steps; pass 2 sweeps 1% steps around the pass-1 winner. Apply the chosen temperature from step 1 first.",
+    run:p=>{const a=num(sd(p,"flow").pass1);return a?[["Pass 2 — Lowest flow (bottom)",f(a-4,0)],["Highest flow (top)",f(a+4,0)],...SEL(" %","1",9),["Printer tag",p.tag]]:[["Pass 1 — Lowest flow (bottom)","80"],["Highest flow (top)","120"],...SEL(" %","5",9),["Printer tag",p.tag]]},
+    look:["Each tread is labelled with its percentage on the front face. Look at the treads under a raking light: ridges and a scalloped shine mean too much flow, pinholes or visible gaps between lines mean too little.","Pass 1: pick the tread that looks best and enter it below. The Run table then shows the pass-2 values (±4% in 1% steps). Print pass 2 and enter the winner.","Add M221 S100 to the printer's end G-code; M221 persists on the machine."],
+    fields:[{k:"pass1",label:"Pass 1 winner",unit:"%",type:"number",step:1},{k:"pass2",label:"Pass 2 winner",unit:"%",type:"number",step:1}],
+    result:p=>{const c=flowChosen(p);const m=c?multiplierAfterFlow(p):null;return[
+      {l:"Chosen flow",s:num(sd(p,"flow").pass2)?"from pass 2":"from pass 1 (pass 2 refines it)",v:c?f(c,0)+" %":"—"},
+      {l:"Extrusion multiplier after this step",s:"current "+f(p.baseMultiplier,4)+" × chosen % / 100; apply it before step 3",v:m?f(m,4):"—",big:!!m}];}},
+  { id:"vol", n:3, name:"Max volumetric flow", cmd:"3. Max volumetric flow",
+    purpose:"Find how fast this hotend can actually melt PETG, on PrusaSlicer's own single-wall comb. Solid infill on a fast printer under-extrudes silently when the limit is too high, and the part loses mass and strength. Run it with the temperature and multiplier already applied.",
+    run:p=>[["Lowest flow (bottom)","6"],["Highest flow (top)","24"],...SEL(" mm³/s","3",7),["Section height","6"],["Prusa single-wall comb","on"],["Extrusion width","(blank)"],["Write 0 into the preset's limits","off"],["Printer tag",p.tag]],
+    look:["Before slicing, set Filament Settings › Advanced › Max volumetric speed to 0 and the cooling slowdown to 0 for this print, or the profile will cap the upper bands. (The command can write those for you, but writing into presets is suspected in the alpha's profile-switch crash, so it is off by default.)","Bands are labelled in mm³/s on the solid column beside the comb; a fatter line marks each band boundary. Look for the first band where the wall gets gaps, goes matte and rough, or the extruder clicks.","Take the highest clean band."],
     fields:[{k:"clean",label:"Highest clean band",unit:"mm³/s",type:"number",step:0.5}],
     result:p=>{const l=volLimit(p);return[
       {l:"Filament max volumetric speed",s:"85% of the highest clean band",v:l?f(l,1)+" mm³/s":"—",big:!!l},
       {l:"Equivalent solid-infill speed",s:"at "+f(p.nozzle*1.125,3)+" × "+f(p.layer,2)+" mm lines",v:l?f(l/extrusionArea(p.nozzle*1.125,p.layer),0)+" mm/s":"—",muted:true}];}},
-  { id:"sweep", n:4, name:"Setting sweep plate", cmd:"4. Setting sweep plate",
-    purpose:"Set the overlap between perimeters and solid infill. Too little leaves a gap line on the top surface; too much is what makes 100% infill parts bulge and grow.",
-    run:p=>[["Setting key","infill_overlap"],["First value","10%"],["Step between blocks","5%"],["Number of blocks","6"],["Block size","25"],["Block height","8"],["Printer tag",p.tag]],
-    look:["Each block carries its value on the front; the swept key is on the back of the second block.","Take the lowest overlap with no visible gap between the outer perimeter loops and the infill on the top surface.","Worth running once more with solid_infill_extrusion_width from 0.4 step 0.05 if the top still shows ridges at the right mass."],
-    fields:[{k:"chosen",label:"Chosen infill overlap",unit:"%",type:"number",step:1},{k:"notes",label:"Other sweeps run",type:"text",wide:true}],
-    result:p=>{const c=num(sd(p,"sweep").chosen);return[{l:"Infill/perimeter overlap",v:c?f(c,0)+" %":"—",big:!!c}];}},
-  { id:"slab", n:5, name:"Solid slab, weighed", cmd:"5. Solid slab (mass check, endurance)",
-    purpose:"The precise flow test. A solid block of known volume weighed on a 0.01 g scale gives volumetric over-extrusion to about 0.1%, which is the small excess that piles up on the nozzle and drops as blobs over a long print.",
+  { id:"slab", n:4, name:"Solid slab, weighed", cmd:"4. Solid slab (mass check)",
+    purpose:"The precise flow test, run after the volumetric limit is set so it also proves the new speeds. A solid block of known volume weighed on a 0.01 g scale gives volumetric over-extrusion to about 0.1%, which is the small excess that piles up on the nozzle and drops as blobs over a long print.",
     run:p=>{const s=sd(p,"slab");return[["Size X",String(num(s.x)??60)],["Size Y",String(num(s.y)??60)],["Height Z",String(num(s.z)??20)],["Add four witness posts",s.posts===false?"off":"on"],["Filament density","(blank, from preset)"],["Printer tag",p.tag]]},
-    look:["Print it with the multiplier from step 2 applied. Let it cool fully, brush off any strings, then weigh it.","Ridges on the top at the right mass point back to step 4; blobs on the posts or edges usually clear once the mass is right.","Bigger is better for precision and for endurance: 100 × 100 × 40 mm is about 500 g and runs as long as a production part."],
-    fields:[{k:"x",label:"Size X",unit:"mm",type:"number",step:1,ph:"60"},{k:"y",label:"Size Y",unit:"mm",type:"number",step:1,ph:"60"},{k:"z",label:"Height Z",unit:"mm",type:"number",step:1,ph:"20"},{k:"posts",label:"Witness posts printed",type:"select",opts:[["true","yes"],["false","no"]]},{k:"measured",label:"Measured mass",unit:"g",type:"number",step:0.01}],
+    look:["Print it with the multiplier from step 2 and the limit from step 3 applied. Let it cool fully, brush off any strings, then weigh it.","Ridges on the top at the right mass point to step 5; blobs on the posts or edges usually clear once the mass is right.","Bigger is better for precision and for endurance: 100 × 100 × 40 mm is about 500 g and runs as long as a production part."],
+    fields:[{k:"x",label:"Size X",unit:"mm",type:"number",step:1,ph:"60"},{k:"y",label:"Size Y",unit:"mm",type:"number",step:1,ph:"60"},{k:"z",label:"Height Z",unit:"mm",type:"number",step:1,ph:"20"},{k:"posts",label:"Witness posts printed",type:"select",opts:[["true","yes"],["false","no"]]},{k:"printed_em",label:"Multiplier the slab was printed with",unit:"",type:"number",step:0.0001,ph:"from PrusaSlicer"},{k:"measured",label:"Measured mass",unit:"g",type:"number",step:0.01}],
     result:p=>{const n=slabNominal(p);const m=num(sd(p,"slab").measured);const after=multiplierAfterSlab(p);const err=m?(m/n.g-1)*100:null;return[
       {l:"Nominal volume",s:"as engraved on the front",v:f(n.cm3,2)+" cm³",muted:true},
       {l:"Expected mass",s:"at "+f(p.density,3)+" g/cm³, labels cost under 0.1 g"+(num(sd(p,"slab").slicer_expected_g)?"; PrusaSlicer logged "+f(sd(p,"slab").slicer_expected_g,2)+" g":""),v:f(n.g,2)+" g"},
       {l:"Over-extrusion",s:"measured / expected − 1",v:err!==null?(err>0?"+":"")+f(err,2)+" %":"—",pill:err===null?null:Math.abs(err)<0.3?["good","within 0.3%"]:Math.abs(err)<1?["warn","adjust"]:["bad","adjust and reprint"]},
-      {l:"Extrusion multiplier after this step",s:f(multiplierAfterFlow(p),4)+" × expected / measured",v:after?f(after,4):"—",big:!!after}];}},
+      {l:"Extrusion multiplier after this step",s:f(slabBaseMultiplier(p),4)+" × expected / measured",v:after?f(after,4):"—",big:!!after}];}},
+  { id:"overlap", n:5, name:"Infill overlap calibration", cmd:"5. Infill overlap calibration",
+    purpose:"Only after flow is right. Overlap sets how far solid infill lines push into the perimeters. Too little leaves a gap or a row of pinholes just inside the innermost perimeter on the top layer; too much pushes infill into the walls, which shows as ridges beside the perimeters on top and as a slight bulge on the sides of 100% infill parts.",
+    run:p=>[["Lowest overlap (first block)","10%"],["Highest overlap (last block)","35%"],["Choose by interval (on) / by blocks (off)","on"],["Interval","5%"],["Number of blocks (when interval is off)","6"],["Block size","25"],["Block height","8"],["Advanced: setting","infill_overlap"],["Printer tag",p.tag]],
+    look:["Each block carries its value on the front; the swept key is on the back of the second block.","Take the lowest overlap with no visible gap between the innermost perimeter and the infill on the top layer. Measure block width with calipers: it should not grow with overlap.","PrusaSlicer's overlap is a percentage of the infill extrusion width; the stock default is 25%."],
+    fields:[{k:"chosen",label:"Chosen infill overlap",unit:"%",type:"number",step:1},{k:"notes",label:"Notes",type:"text",wide:true}],
+    result:p=>{const c=num(sd(p,"overlap").chosen);return[{l:"Infill/perimeter overlap",v:c?f(c,0)+" %":"—",big:!!c}];}},
   { id:"bar", n:6, name:"Shrinkage and growth bar", cmd:"6. Shrinkage and growth bar",
     purpose:"Separate thermal shrinkage from perimeter growth. PETG shrinks about 0.3 to 0.6% on cooling, so a 150 mm part comes out short while a 20 mm coupon looks fine. Hole centre distance ignores growth; width and hole diameter isolate it.",
     run:p=>[["Bar length X","150"],["Bar width Y","20"],["Bar height Z","8"],["Hole diameter","6"],["Hole centre distance from each end","10"],["Printer tag",p.tag]],
@@ -315,25 +321,42 @@ const STEPS = [
       {l:"Scale factor for production models",s:"1 / (1 − shrinkage), each axis",v:r.scale!==null?f(r.scale,4):"—"},
       {l:"XY growth per side",s:"from width "+(r.gW!==null?f(r.gW,3):"—")+", from hole "+(r.gD!==null?f(r.gD,3):"—"),v:r.g!==null?f(r.g,3)+" mm":"—",big:r.g!==null},
       {l:"XY size compensation to set",s:"the negative of the growth",v:r.g!==null?f(-r.g,3)+" mm":"—"}];}},
-  { id:"coupon", n:7, name:"Reference coupon", cmd:"7. Reference coupon (100% infill)",
-    purpose:"One coupon per printer with everything applied, to confirm the numbers and to keep. Compare coupons from different machines side by side; the tag and note are engraved.",
-    run:p=>{const r=barResult(p);return[["Length X","50"],["Width Y","25"],["Height Z","10"],["Through-hole diameter","10"],["Perimeters","2"],["XY size compensation",r.g!==null?f(-r.g,3):"(blank)"],["Elephant foot compensation",String(num(sd(p,"coupon").foot)??"0.2")],["Printer tag",p.tag],["Note","spool and date"]]},
-    look:["Measure length, width, height and the hole. Deviations should now be within caliper noise, apart from shrinkage on the 50 mm length (about 0.2 mm at 0.4%).","A flared first layer means more elephant foot compensation; a pinched one means less."],
-    fields:[{k:"l",label:"Measured length",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"h",label:"Measured height",unit:"mm",type:"number",step:0.01},{k:"hole",label:"Measured hole",unit:"mm",type:"number",step:0.01},{k:"foot",label:"Elephant foot compensation used",unit:"mm",type:"number",step:0.01}],
+  { id:"coupon", n:7, name:"Reference coupon", cmd:"7. Reference coupon",
+    purpose:"One part per printer with everything applied: a thick solid body with a hole, an overhang wing on one end, and three thin fins (0.8, 1.2, 1.6 mm) on top. Measure it, judge the wing and the fins, and keep it; the tag and note are engraved.",
+    run:p=>{const r=barResult(p);return[["Length X","50"],["Width Y","25"],["Height Z","10"],["Through-hole diameter","10"],["Overhang wing angle","45"],["Thin-wall fins on top","on"],["Perimeters","2"],["XY size compensation",r.g!==null?f(-r.g,3):"(blank)"],["Elephant foot compensation",String(num(sd(p,"coupon").foot)??"0.2")],["Printer tag",p.tag],["Note","spool and date"]]},
+    look:["Measure length, width, height and the hole. Deviations should now be within caliper noise apart from shrinkage on the 50 mm length (about 0.2 mm at 0.4%).","Wing: the underside should be smooth with no curled edges. Fins: the 0.8 mm fin is two lines with no room for gap fill, 1.2 mm needs gap fill, 1.6 mm is three or four lines; all three should be solid with no holes.","A flared first layer means more elephant foot compensation; a pinched one means less."],
+    fields:[{k:"l",label:"Measured length",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"h",label:"Measured height",unit:"mm",type:"number",step:0.01},{k:"hole",label:"Measured hole",unit:"mm",type:"number",step:0.01},{k:"foot",label:"Elephant foot compensation used",unit:"mm",type:"number",step:0.01},{k:"overhang",label:"Overhang wing",type:"text",wide:true,ph:"clean / curled / drooping"},{k:"fins",label:"Thin fins 0.8 / 1.2 / 1.6",type:"text",wide:true,ph:"which ones are solid"}],
     result:p=>{const c=sd(p,"coupon");const r=barResult(p);const sc=r.s!==null?1-r.s:1;const L0=num(c.l0)??50,W0=num(c.w0)??25,H0=num(c.h0)??10,D0=num(c.hole0)??10;const rows=[["Length",num(c.l),L0*sc],["Width",num(c.w),W0*sc],["Height",num(c.h),H0],["Hole",num(c.hole),D0*sc]];return rows.map(([l,m,n])=>{const d=m!==null?m-n:null;return{l,s:"expected "+f(n,2)+" mm after shrinkage",v:d!==null?(d>0?"+":"")+f(d,3)+" mm":"—",pill:d===null?null:Math.abs(d)<=0.05?["good","ok"]:Math.abs(d)<=0.12?["warn","check"]:["bad","off"]};});}},
   { id:"string", n:8, name:"Stringing tower", cmd:"8. Stringing tower",
     purpose:"Optional. Only needed when retraction or fan behaviour differs between machines. Keep the filament's fan settings constant while sweeping fan.",
-    run:p=>[["Bottom section temperature",String(num(sd(p,"temp").chosen)??250)],["Temperature drop per section","5"],["Bottom section fan","-1 (leave to slicer)"],["Fan increase per section","0"],["Number of sections","6"],["Printer tag",p.tag]],
+    run:p=>[["Hottest section (bottom)",String(num(sd(p,"temp").chosen)??250)],["Coolest section (top)",String((num(sd(p,"temp").chosen)??250)-25)],...SEL(" °C","5",6),["Bottom section fan","-1 (leave to slicer)"],["Fan increase per section","0"],["Printer tag",p.tag]],
     look:["Strings between the pillars at the chosen temperature mean the retraction needs work on that machine, not the filament.","If you sweep fan, the right pillar is labelled with the fan percentage."],
     fields:[{k:"temp",label:"Temperature with least stringing",unit:"°C",type:"number",step:1},{k:"fan",label:"Fan chosen",unit:"%",type:"number",step:5},{k:"notes",label:"Notes",type:"text",wide:true}],
     result:p=>{const s=sd(p,"string");return[{l:"Stringing note",v:num(s.temp)?f(s.temp,0)+" °C / "+(num(s.fan)!==null?f(s.fan,0)+" % fan":"fan as slicer"):"—"}];}},
   { id:"apply", n:9, name:"Apply and save preset", cmd:"9. Apply dialed-in values",
-    purpose:"Type these into the Apply dialog, then save the filament preset under this printer's name and select it in that printer's profile. Nothing is saved until you save the preset.",
-    run:p=>{const t=num(sd(p,"temp").chosen);const m=finalMultiplier(p);const v=volLimit(p);const o=num(sd(p,"sweep").chosen);return[["Nozzle temperature",t?f(t,0):"0 (keep)"],["First layer temperature",t?f(t-10,0):"0 (keep)"],["Extrusion multiplier",m?f(m,4):"(blank)"],["Filament max volumetric speed",v?f(v,1):"(blank)"],["Infill/perimeter overlap",o?f(o,0)+"%":"(blank)"],["Also set print preset to 100% rectilinear","on"]]},
+    purpose:"Type these into the Apply dialog (or save profile.lua below and run Tools › Apply values from profile.lua), then save the filament preset under this printer's name and select it in that printer's profile. Nothing is saved until you save the preset.",
+    run:p=>{const t=num(sd(p,"temp").chosen);const m=finalMultiplier(p);const v=volLimit(p);const o=num(sd(p,"overlap").chosen);return[["Nozzle temperature",t?f(t,0):"0 (keep)"],["First layer temperature",t?f(t-10,0):"0 (keep)"],["Extrusion multiplier",m?f(m,4):"(blank)"],["Filament max volumetric speed",v?f(v,1):"(blank)"],["Infill/perimeter overlap",o?f(o,0)+"%":"(blank)"],["Also set print preset to 100% rectilinear","on"]]},
     look:["XY size compensation and elephant foot are per-object settings in PrusaSlicer, not preset values; put them in the print preset's Advanced page or on each object.","Scale production models by the factor from step 6 if the parts are large enough to care."],
     fields:[{k:"presetName",label:"Saved filament preset name",type:"text",wide:true,ph:"Prusament PETG - "+"printer"}],
     result:null }
 ];
+
+// Steps that must be printed with an earlier result already applied.
+// Returns warning strings from the last DATA line's preset snapshot.
+function consistencyWarnings(p){
+  const w = [];
+  if (p.baselineWarning) w.push(p.baselineWarning);
+  const snap = p.lastSnapshot; if (!snap) return w;
+  const order = STEPS.map(s => s.id); const at = order.indexOf(snap.step);
+  const t = num(sd(p,"temp").chosen);
+  if (t && at > order.indexOf("temp") && snap.p_temperature && snap.p_temperature !== t)
+    w.push(`Step ${at+1} was printed at ${snap.p_temperature} °C but step 1 chose ${t} °C. Apply the temperature first (step 9 or Tools › Apply values from profile.lua).`);
+  const m = multiplierAfterFlow(p);
+  const target = multiplierAfterSlab(p) ?? m;
+  if (flowChosen(p) && at > order.indexOf("flow") && snap.p_extrusion_multiplier && Math.abs(snap.p_extrusion_multiplier - target) > 0.0015 && Math.abs(snap.p_extrusion_multiplier - m) > 0.0015)
+    w.push(`Step ${at+1} was printed with extrusion multiplier ${f(snap.p_extrusion_multiplier,4)} but the dialed-in value is ${f(target,4)}. Apply it first.`);
+  return w;
+}
 
 // ---------- render ----------
 const $ = s => document.querySelector(s);
@@ -368,8 +391,9 @@ function renderStep(st){
   const p = printer(); const d = sd(p, st.id);
   const idx = STEPS.indexOf(st);
   const prev = STEPS[idx-1], next = STEPS[idx+1];
-  const beds = st.id === "apply" ? "" : `<p class="bed">Bed: add a new build plate in PrusaSlicer (the + next to the bed tabs) and select it before running. Each tower keeps its own per-layer G-code on its bed.</p>`;
-  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>
+  const beds = st.id === "apply" ? "" : `<p class="bed">${esc(BED)}</p>`;
+  const warns = consistencyWarnings(p).map(w => `<div class="warnbar">${esc(w)}</div>`).join("");
+  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>${warns}
     <div class="sheet-head"><h1><span class="n">${st.n}</span>${esc(st.name)}</h1><div class="who"><b>${esc(p.name)}</b><br>${esc(p.tag)} · ${esc(p.filament)} · current multiplier ${f(p.baseMultiplier,4)}</div></div>
     <p class="purpose">${esc(st.purpose)}</p>
     <div class="grid">
@@ -395,7 +419,7 @@ function renderStep(st){
 }
 function refreshRun(st){ const t = $("#main .vals"); if (t) t.innerHTML = st.run(printer()).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join(""); }
 function summaryText(p){
-  const t = num(sd(p,"temp").chosen), m = finalMultiplier(p), v = volLimit(p), o = num(sd(p,"sweep").chosen), r = barResult(p), foot = num(sd(p,"coupon").foot);
+  const t = num(sd(p,"temp").chosen), m = finalMultiplier(p), v = volLimit(p), o = num(sd(p,"overlap").chosen), r = barResult(p), foot = num(sd(p,"coupon").foot);
   return [
     `${p.name} (${p.tag}) · ${p.filament}`,
     `Filament preset (Apply command 9):`,
@@ -426,7 +450,9 @@ function renderPrinter(){
       <div class="field"><label for="pf-noz">Nozzle</label><input type="number" step="0.05" id="pf-noz" data-p="nozzle" value="${p.nozzle}"></div>
       <div class="field"><label for="pf-lh">Layer height</label><input type="number" step="0.05" id="pf-lh" data-p="layer" value="${p.layer}"></div>
     </div>
-    <div style="margin-top:14px;display:flex;gap:8px"><button class="btn danger small" id="delPrinter" type="button">Remove this printer</button></div></section>`;
+    <div style="margin-top:14px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn small" id="resetBaseline" type="button">Reset baseline${p.baseline?` (now ${p.baseline.layer_height} mm, ${p.baseline.nozzle} nozzle, from step ${STEPS.findIndex(s=>s.id===p.baselineStep)+1})`:""}</button><button class="btn danger small" id="delPrinter" type="button">Remove this printer</button></div>
+    <p class="note">The baseline is the layer height, nozzle and print profile recorded from the first PrusaSlicer run for this printer. Later runs that differ raise a warning on the step.</p></section>`;
+  $("#resetBaseline").addEventListener("click", () => { const q = printer(); q.baseline = null; q.baselineStep = null; q.baselineWarning = null; q.lastSnapshot = null; save(); render(); toast("Baseline cleared; the next run sets it"); });
   $("#main").querySelectorAll("[data-p]").forEach(el => el.addEventListener("input", () => {
     const k = el.dataset.p; printer()[k] = el.type === "number" ? (+el.value || 0) : el.value; if (k !== "name" && k !== "tag" && k !== "filament") {} printer().example = false; save(); renderRail();
   }));
@@ -438,7 +464,7 @@ function renderPrinter(){
 }
 function renderCompare(){
   const rows = state.printers.map(p => { const r = barResult(p); const m = finalMultiplier(p); const n = slabNominal(p); const ms = num(sd(p,"slab").measured);
-    return `<tr><td>${esc(p.name)}<br><span class="tag" style="font-family:var(--mono);font-size:12px;color:var(--ink-3)">${esc(p.tag)}${p.example?" · example":""}</span></td><td>${num(sd(p,"temp").chosen)?f(sd(p,"temp").chosen,0):"—"}</td><td>${num(sd(p,"flow").chosen)?f(sd(p,"flow").chosen,0)+"%":"—"}</td><td>${ms?((ms/n.g-1)*100>0?"+":"")+f((ms/n.g-1)*100,2)+"%":"—"}</td><td>${m?f(m,4):"—"}</td><td>${volLimit(p)?f(volLimit(p),1):"—"}</td><td>${num(sd(p,"sweep").chosen)?f(sd(p,"sweep").chosen,0)+"%":"—"}</td><td>${r.g!==null?f(-r.g,3):"—"}</td><td>${r.s!==null?f(r.s*100,2)+"%":"—"}</td><td>${STEPS.filter(s=>sd(p,s.id).done).length}/${STEPS.length}</td></tr>`; }).join("");
+    return `<tr><td>${esc(p.name)}<br><span class="tag" style="font-family:var(--mono);font-size:12px;color:var(--ink-3)">${esc(p.tag)}${p.example?" · example":""}</span></td><td>${num(sd(p,"temp").chosen)?f(sd(p,"temp").chosen,0):"—"}</td><td>${flowChosen(p)?f(flowChosen(p),0)+"%":"—"}</td><td>${ms?((ms/n.g-1)*100>0?"+":"")+f((ms/n.g-1)*100,2)+"%":"—"}</td><td>${m?f(m,4):"—"}</td><td>${volLimit(p)?f(volLimit(p),1):"—"}</td><td>${num(sd(p,"overlap").chosen)?f(sd(p,"overlap").chosen,0)+"%":"—"}</td><td>${r.g!==null?f(-r.g,3):"—"}</td><td>${r.s!==null?f(r.s*100,2)+"%":"—"}</td><td>${STEPS.filter(s=>sd(p,s.id).done).length}/${STEPS.length}</td></tr>`; }).join("");
   $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>
     <div class="sheet-head"><h1>Compare printers</h1><div class="who">${state.printers.length} printer${state.printers.length===1?"":"s"}</div></div>
     <p class="purpose">The spread between machines is the point. Temperature and multiplier normally differ by a few units; if the volumetric limit differs a lot, one hotend is not what its profile claims.</p>
@@ -447,8 +473,10 @@ function renderCompare(){
 }
 function luaStr(v){ return '"' + String(v).replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\n/g," ") + '"'; }
 function profileEntry(p){
-  const t = num(sd(p,"temp").chosen), m = finalMultiplier(p), v = volLimit(p), o = num(sd(p,"sweep").chosen), r = barResult(p), foot = num(sd(p,"coupon").foot);
+  const t = num(sd(p,"temp").chosen), m = finalMultiplier(p), v = volLimit(p), o = num(sd(p,"overlap").chosen), r = barResult(p), foot = num(sd(p,"coupon").foot);
   const e = [["tag", luaStr(p.tag)]];
+  if (p.layer) e.push(["layer_height", f(p.layer,3)]);
+  if (p.nozzle) e.push(["nozzle", f(p.nozzle,2)]);
   if (t) { e.push(["temperature", f(t,0)]); e.push(["first_layer_temperature", f(t-10,0)]); }
   if (m) e.push(["extrusion_multiplier", f(m,4)]);
   if (v) e.push(["filament_max_volumetric_speed", f(v,1)]);
@@ -538,11 +566,23 @@ function onData(d){
   else if (!p.tag && d.tag) p.tag = d.tag;
   state.active = p.id;
   const st = sd(p, d.step);
-  if (d.step === "slab") { st.x = d.x; st.y = d.y; st.z = d.z; st.posts = !!d.posts; if (d.density) p.density = d.density; if (d.extrusion_multiplier) p.baseMultiplier = d.extrusion_multiplier; st.slicer_expected_g = d.expected_g; }
+  if (d.layer_height) {
+    const base = { layer_height: d.layer_height, nozzle: d.nozzle, perimeters: d.p_perimeters, top: d.p_top_solid_layers, bottom: d.p_bottom_solid_layers };
+    if (!p.baseline) { p.baseline = base; p.baselineStep = d.step; p.layer = d.layer_height; if (d.nozzle) p.nozzle = d.nozzle; }
+    else {
+      const diffs = [];
+      for (const [k, label] of [["layer_height","layer height"],["nozzle","nozzle"],["perimeters","perimeters"],["top","top solid layers"],["bottom","bottom solid layers"]])
+        if (base[k] != null && p.baseline[k] != null && Math.abs(base[k] - p.baseline[k]) > 1e-6) diffs.push(`${label} ${p.baseline[k]} → ${base[k]}`);
+      p.baselineWarning = diffs.length ? `The printer or print profile changed since step ${STEPS.findIndex(s=>s.id===p.baselineStep)+1}: ${diffs.join(", ")}. Every step must use the same printer, nozzle, layer height and print profile; change one variable at a time. Re-run this step, or reset the baseline in Printer details.` : null;
+      if (p.baselineWarning) toast("Profile changed since the earlier steps");
+    }
+    p.lastSnapshot = { step: d.step, p_temperature: d.p_temperature, p_extrusion_multiplier: d.p_extrusion_multiplier, p_max_volumetric_speed: d.p_max_volumetric_speed };
+  }
+  if (d.baseline_mismatch) { p.baselineWarning = "PrusaSlicer reports: " + d.baseline_mismatch; toast("Layer height or nozzle differs from profile.lua"); }
+  if (d.step === "slab") { st.x = d.x; st.y = d.y; st.z = d.z; st.posts = !!d.posts; if (d.density) p.density = d.density; if (d.extrusion_multiplier) st.printed_em = d.extrusion_multiplier; st.slicer_expected_g = d.expected_g; }
   if (d.step === "bar") { st.c0 = d.c0; st.w0 = d.width; st.d0 = d.hole; }
   if (d.step === "coupon") { st.l0 = d.length; st.w0 = d.width; st.h0 = d.height; st.hole0 = d.hole; if (d.foot) st.foot = d.foot; }
   if (d.step === "flow" && d.extrusion_multiplier) p.baseMultiplier = d.extrusion_multiplier;
-  if (d.step === "vol") { if (d.layer_height) p.layer = d.layer_height; if (d.nozzle) p.nozzle = d.nozzle; }
   if (STEPS.some(s => s.id === d.step)) state.step = d.step;
   save(); render();
 }

@@ -98,7 +98,7 @@ def detect_plugins_dir():
     return None
 
 
-WINDOWS_EXES = ["prusa-slicer-console.exe", "prusa-slicer.exe"]
+WINDOWS_EXES = ["prusa-slicer-console.exe", "prusaslicer-console.exe", "prusaslicer.exe", "prusa-slicer.exe"]
 
 
 def resolve_executable(path):
@@ -113,8 +113,10 @@ def resolve_executable(path):
                 if candidate.exists():
                     return str(candidate)
         return None
-    if platform.system() == "Windows" and p.name.lower() == "prusa-slicer.exe" and (p.parent / "prusa-slicer-console.exe").exists():
-        return str(p.parent / "prusa-slicer-console.exe")
+    if platform.system() == "Windows" and p.suffix.lower() == ".exe" and "console" not in p.name.lower():
+        console = p.parent / p.name.lower().replace(".exe", "-console.exe")
+        if console.exists():
+            return str(console)
     return str(p) if p.exists() else None
 
 
@@ -240,7 +242,10 @@ class Helper:
         for raw in proc.stdout:
             self.ingest(raw.rstrip("\r\n"))
         code = proc.wait()
-        self.emit("helper", f"PrusaSlicer exited with code {code}")
+        note = ""
+        if code == 3221226505 or code == -1073740791:
+            note = " (0xC0000409, a Windows fail-fast crash inside PrusaSlicer; note what you did last)"
+        self.emit("helper", f"PrusaSlicer exited with code {code}{note}")
 
     def ingest(self, line):
         if PREFIX in line:
@@ -251,8 +256,12 @@ class Helper:
                 self.emit("warning", body)
             else:
                 self.emit("plugin", body)
+        elif "may not be an error" in line or "not a plugin but shared module" in line:
+            self.emit("slicer", line)  # PrusaSlicer's routine note about helper modules
         elif re.search(r"\b(lua|plugin)\b", line, re.I) and re.search(r"error|fail|exception|cannot|invalid", line, re.I):
             self.emit("error", line)
+        elif re.search(r"exited with code|crash|assert", line, re.I):
+            self.emit("warning", line)
         else:
             self.emit("slicer", line)
 

@@ -2,7 +2,7 @@ info = {
     id = "slab",
     type = "project.plugin",
     title = "Solid slab: mass check and endurance (100% infill)",
-    menu = "Filament Dial-In/5. Solid slab (mass check, endurance)",
+    menu = "Filament Dial-In/4. Solid slab (mass check)",
     params = {
         { name = "size_x", label = "Size X [mm]", type = "int", default = 60 },
         { name = "size_y", label = "Size Y [mm]", type = "int", default = 60 },
@@ -102,7 +102,7 @@ function execute(opts)
         util.fmt(mass_g, 2), util.fmt(density, 3), density_source))
     util.log(string.format("weigh the printed slab: new extrusion multiplier = %s x %s / measured grams",
         em and util.fmt(em, 4) or "current multiplier", util.fmt(mass_g, 2)))
-    util.data("slab", { printer = util.printer_name(bed), tag = tag, x = X, y = Y, z = Z, posts = opts.posts and true or false,
+    util.data(bed, "slab", { printer = util.printer_name(bed), tag = tag, x = X, y = Y, z = Z, posts = opts.posts and true or false,
         volume_cm3 = volume_cm3, density = density, density_source = density_source, expected_g = mass_g,
         extrusion_multiplier = em or 0 })
 end

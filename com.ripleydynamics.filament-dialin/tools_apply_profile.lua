@@ -75,5 +75,5 @@ function execute(opts)
         util.log("per-object values are not preset values, set them on the object or in the print preset's Advanced page: " .. table.concat(skipped, ", "))
     end
     util.log("the presets are modified but not saved: save the filament preset under a printer-specific name to keep them")
-    util.data("apply_profile", { printer = name, tag = entry.tag or "", changed = changed })
+    util.data(bed, "apply_profile", { printer = name, tag = entry.tag or "", changed = changed })
 end

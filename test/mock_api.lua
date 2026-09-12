@@ -282,11 +282,31 @@ function Mock.new(options)
         positive(R, r)
         return new_mesh("torus", { min_x = -R - r, min_y = -R - r, min_z = -r, max_x = R + r, max_y = R + r, max_z = r }, ZERO)
     end
-    function api.load_stl(path)
-        error("mock: no STL assets in this bundle (" .. tostring(path) .. ")")
+    -- Assets: bounds measured from the real files in assets/prusa.
+    local ASSETS = {
+        ["assets/prusa/temp_tower-base.stl"] = { min_x = -40, min_y = -5, min_z = -1, max_x = 40, max_y = 5, max_z = 0 },
+        ["assets/prusa/temp_tower-step.stl"] = { min_x = -40, min_y = -5, min_z = 0, max_x = 40, max_y = 5.5, max_z = 10 },
+    }
+    local function check_path(path)
+        assert(type(path) == "string", "asset path must be a string")
+        assert(not path:find("%.%.") and path:sub(1, 1) ~= "/", "asset path escapes the sandbox: " .. path)
     end
-    function api.emboss_svg(path)
-        error("mock: no SVG assets in this bundle (" .. tostring(path) .. ")")
+    function api.load_stl(path)
+        check_path(path)
+        local b = ASSETS[path]
+        if not b then error("Cannot safely load file: " .. path) end
+        -- Loaded assets carry valid bounds (unlike primitives).
+        return new_mesh("stl", b, { b.min_x, b.min_y, b.min_z, b.max_x, b.max_y, b.max_z })
+    end
+    function api.emboss_svg(path, depth)
+        check_path(path)
+        assert(is_finite_number(depth) and depth > 0, "emboss_svg depth must be positive")
+        if path ~= "assets/prusa/hreben.svg" then
+            return new_mesh("svg", { min_x = 0, min_y = 0, min_z = 0, max_x = 0, max_y = 0, max_z = 0 }, ZERO)
+        end
+        -- The comb path spans x 20..180 and y 50..150 in a 200 mm viewBox.
+        local b = { min_x = 20, min_y = 50, min_z = 0, max_x = 180, max_y = 150, max_z = depth }
+        return new_mesh("svg", b, { b.min_x, b.min_y, b.min_z, b.max_x, b.max_y, b.max_z })
     end
 
     function api.fonts()
