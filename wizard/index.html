@@ -127,6 +127,25 @@ table.vals tr:last-child td{border-bottom:0}
 .export p{margin:0 0 10px;font-size:13.5px;color:var(--ink-2)}
 .export textarea{width:100%;height:220px;font-family:var(--mono);font-size:12px;background:var(--paper);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:8px;resize:vertical}
 .export-actions{display:flex;gap:8px;margin-top:10px}
+.helper{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;background:var(--sheet);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:0 0 20px;font-size:13px}
+.helper .st{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;color:var(--ink-2)}
+.helper .st .dot{width:8px;height:8px}
+.helper .grow{flex:1 1 auto}
+.log{position:fixed;right:0;bottom:0;left:272px;background:var(--rail);border-top:1px solid var(--line);z-index:5;max-height:38vh;display:flex;flex-direction:column}
+.log.min{max-height:none}
+.log .bar{display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);cursor:pointer}
+.log .bar .grow{flex:1}
+.log ol{list-style:none;margin:0;padding:0 14px 10px;overflow:auto;font-family:var(--mono);font-size:12px;line-height:1.5}
+.log.min ol{display:none}
+.log li{white-space:pre-wrap;word-break:break-word;padding:1px 0}
+.log li.ev-plugin{color:var(--ink)}
+.log li.ev-data{color:var(--good)}
+.log li.ev-warning{color:var(--warn)}
+.log li.ev-error{color:var(--bad)}
+.log li.ev-helper{color:var(--accent)}
+.log li.ev-slicer{color:var(--ink-3)}
+body.has-log main{padding-bottom:42vh}
+@media (max-width:760px){.log{left:0}}
 .rail-toggle{display:none}
 @media (max-width:760px){
   .app{grid-template-columns:1fr}
@@ -273,7 +292,7 @@ const STEPS = [
     fields:[{k:"x",label:"Size X",unit:"mm",type:"number",step:1,ph:"60"},{k:"y",label:"Size Y",unit:"mm",type:"number",step:1,ph:"60"},{k:"z",label:"Height Z",unit:"mm",type:"number",step:1,ph:"20"},{k:"posts",label:"Witness posts printed",type:"select",opts:[["true","yes"],["false","no"]]},{k:"measured",label:"Measured mass",unit:"g",type:"number",step:0.01}],
     result:p=>{const n=slabNominal(p);const m=num(sd(p,"slab").measured);const after=multiplierAfterSlab(p);const err=m?(m/n.g-1)*100:null;return[
       {l:"Nominal volume",s:"as engraved on the front",v:f(n.cm3,2)+" cm³",muted:true},
-      {l:"Expected mass",s:"at "+f(p.density,3)+" g/cm³, labels cost under 0.1 g",v:f(n.g,2)+" g"},
+      {l:"Expected mass",s:"at "+f(p.density,3)+" g/cm³, labels cost under 0.1 g"+(num(sd(p,"slab").slicer_expected_g)?"; PrusaSlicer logged "+f(sd(p,"slab").slicer_expected_g,2)+" g":""),v:f(n.g,2)+" g"},
       {l:"Over-extrusion",s:"measured / expected − 1",v:err!==null?(err>0?"+":"")+f(err,2)+" %":"—",pill:err===null?null:Math.abs(err)<0.3?["good","within 0.3%"]:Math.abs(err)<1?["warn","adjust"]:["bad","adjust and reprint"]},
       {l:"Extrusion multiplier after this step",s:f(multiplierAfterFlow(p),4)+" × expected / measured",v:after?f(after,4):"—",big:!!after}];}},
   { id:"bar", n:6, name:"Shrinkage and growth bar", cmd:"6. Shrinkage and growth bar",
@@ -292,7 +311,7 @@ const STEPS = [
     run:p=>{const r=barResult(p);return[["Length X","50"],["Width Y","25"],["Height Z","10"],["Through-hole diameter","10"],["Perimeters","2"],["XY size compensation",r.g!==null?f(-r.g,3):"(blank)"],["Elephant foot compensation",String(num(sd(p,"coupon").foot)??"0.2")],["Printer tag",p.tag],["Note","spool and date"]]},
     look:["Measure length, width, height and the hole. Deviations should now be within caliper noise, apart from shrinkage on the 50 mm length (about 0.2 mm at 0.4%).","A flared first layer means more elephant foot compensation; a pinched one means less."],
     fields:[{k:"l",label:"Measured length",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"h",label:"Measured height",unit:"mm",type:"number",step:0.01},{k:"hole",label:"Measured hole",unit:"mm",type:"number",step:0.01},{k:"foot",label:"Elephant foot compensation used",unit:"mm",type:"number",step:0.01}],
-    result:p=>{const c=sd(p,"coupon");const r=barResult(p);const sc=r.s!==null?1-r.s:1;const rows=[["Length",num(c.l),50*sc],["Width",num(c.w),25*sc],["Height",num(c.h),10],["Hole",num(c.hole),10*sc]];return rows.map(([l,m,n])=>{const d=m!==null?m-n:null;return{l,s:"expected "+f(n,2)+" mm after shrinkage",v:d!==null?(d>0?"+":"")+f(d,3)+" mm":"—",pill:d===null?null:Math.abs(d)<=0.05?["good","ok"]:Math.abs(d)<=0.12?["warn","check"]:["bad","off"]};});}},
+    result:p=>{const c=sd(p,"coupon");const r=barResult(p);const sc=r.s!==null?1-r.s:1;const L0=num(c.l0)??50,W0=num(c.w0)??25,H0=num(c.h0)??10,D0=num(c.hole0)??10;const rows=[["Length",num(c.l),L0*sc],["Width",num(c.w),W0*sc],["Height",num(c.h),H0],["Hole",num(c.hole),D0*sc]];return rows.map(([l,m,n])=>{const d=m!==null?m-n:null;return{l,s:"expected "+f(n,2)+" mm after shrinkage",v:d!==null?(d>0?"+":"")+f(d,3)+" mm":"—",pill:d===null?null:Math.abs(d)<=0.05?["good","ok"]:Math.abs(d)<=0.12?["warn","check"]:["bad","off"]};});}},
   { id:"string", n:8, name:"Stringing tower", cmd:"8. Stringing tower",
     purpose:"Optional. Only needed when retraction or fan behaviour differs between machines. Keep the filament's fan settings constant while sweeping fan.",
     run:p=>[["Bottom section temperature",String(num(sd(p,"temp").chosen)??250)],["Temperature drop per section","5"],["Bottom section fan","-1 (leave to slicer)"],["Fan increase per section","0"],["Number of sections","6"],["Printer tag",p.tag]],
@@ -341,7 +360,7 @@ function renderStep(st){
   const idx = STEPS.indexOf(st);
   const prev = STEPS[idx-1], next = STEPS[idx+1];
   const beds = st.id === "apply" ? "" : `<p class="bed">Bed: add a new build plate in PrusaSlicer (the + next to the bed tabs) and select it before running. Each tower keeps its own per-layer G-code on its bed.</p>`;
-  $("#main").innerHTML = `
+  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>
     <div class="sheet-head"><h1><span class="n">${st.n}</span>${esc(st.name)}</h1><div class="who"><b>${esc(p.name)}</b><br>${esc(p.tag)} · ${esc(p.filament)} · current multiplier ${f(p.baseMultiplier,4)}</div></div>
     <p class="purpose">${esc(st.purpose)}</p>
     <div class="grid">
@@ -351,6 +370,7 @@ function renderStep(st){
         ${st.result?`<section class="block"><h2><span class="k">C</span>Result</h2><div class="results" id="results">${resultsHtml(st,p)}</div></section>`:`<section class="block"><h2><span class="k">C</span>Hand-off</h2><pre class="summary-text" id="summary">${esc(summaryText(p))}</pre><div style="margin-top:10px"><button class="btn small" id="copySummary" type="button">Copy</button></div></section>`}
       </div>
     </div>
+    ${st.id==="apply"?`<section class="block" style="margin-top:20px"><h2><span class="k">D</span>profile.lua for the plugin</h2><p class="note" style="margin:0 0 10px">Every non-example printer on this sheet, keyed by its PrusaSlicer name. Save it as <code>profile.lua</code> in the bundle folder (${helper?"the helper does this for you":"copy it there by hand"}), then run <b>Plugins › Filament Dial-In › Tools › Apply values from profile.lua</b> on each printer instead of typing the values above. The towers also read the tag from it.</p><textarea class="summary-text" id="profileText" readonly spellcheck="false" style="width:100%;height:200px;resize:vertical">${esc(profileLua())}</textarea><div style="margin-top:10px;display:flex;gap:8px">${helper?`<button class="btn small primary" type="button" data-helper="profile">Save profile.lua to plugin</button>`:""}<button class="btn small" type="button" id="profileCopy">Copy</button></div></section>`:""}
     <div class="done-row"><label><input type="checkbox" id="doneBox" ${d.done?"checked":""}> Step ${st.n} done for ${esc(p.tag)}</label><div class="nav">${prev?`<button class="btn" type="button" data-go="${prev.id}">← ${prev.n}</button>`:""}${next?`<button class="btn primary" type="button" data-go="${next.id}">Next: ${next.n}. ${esc(next.name)} →</button>`:`<button class="btn primary" type="button" data-go="compare">Compare printers →</button>`}</div></div>`;
   $("#main").querySelectorAll("[data-field]").forEach(el => el.addEventListener("input", () => {
     const k = el.dataset.field; let v = el.value;
@@ -385,7 +405,7 @@ function summaryText(p){
 }
 function renderPrinter(){
   const p = printer();
-  $("#main").innerHTML = `
+  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>
     <div class="sheet-head"><h1>Printer details</h1><div class="who"><b>${esc(p.name)}</b></div></div>
     <p class="purpose">These are the starting values the arithmetic uses. The current multiplier is what the filament preset had before you started; the slab result multiplies from it.${p.example?" This printer is an example with made-up measurements: edit it or add your own.":""}</p>
     <section class="block"><div class="printer-form">
@@ -410,12 +430,106 @@ function renderPrinter(){
 function renderCompare(){
   const rows = state.printers.map(p => { const r = barResult(p); const m = finalMultiplier(p); const n = slabNominal(p); const ms = num(sd(p,"slab").measured);
     return `<tr><td>${esc(p.name)}<br><span class="tag" style="font-family:var(--mono);font-size:12px;color:var(--ink-3)">${esc(p.tag)}${p.example?" · example":""}</span></td><td>${num(sd(p,"temp").chosen)?f(sd(p,"temp").chosen,0):"—"}</td><td>${num(sd(p,"flow").chosen)?f(sd(p,"flow").chosen,0)+"%":"—"}</td><td>${ms?((ms/n.g-1)*100>0?"+":"")+f((ms/n.g-1)*100,2)+"%":"—"}</td><td>${m?f(m,4):"—"}</td><td>${volLimit(p)?f(volLimit(p),1):"—"}</td><td>${num(sd(p,"sweep").chosen)?f(sd(p,"sweep").chosen,0)+"%":"—"}</td><td>${r.g!==null?f(-r.g,3):"—"}</td><td>${r.s!==null?f(r.s*100,2)+"%":"—"}</td><td>${STEPS.filter(s=>sd(p,s.id).done).length}/${STEPS.length}</td></tr>`; }).join("");
-  $("#main").innerHTML = `
+  $("#main").innerHTML = `<div id="helperBar">${helperBar()}</div>
     <div class="sheet-head"><h1>Compare printers</h1><div class="who">${state.printers.length} printer${state.printers.length===1?"":"s"}</div></div>
     <p class="purpose">The spread between machines is the point. Temperature and multiplier normally differ by a few units; if the volumetric limit differs a lot, one hotend is not what its profile claims.</p>
     <section class="block compare"><table><thead><tr><th>Printer</th><th>Temp °C</th><th>M221</th><th>Slab error</th><th>Multiplier</th><th>Max mm³/s</th><th>Overlap</th><th>XY comp mm</th><th>Shrink</th><th>Steps</th></tr></thead><tbody>${rows}</tbody></table></section>
     <p class="note">Export JSON to keep a copy or move the sheet to another machine. Values live in this browser only.</p>`;
 }
+function luaStr(v){ return '"' + String(v).replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\n/g," ") + '"'; }
+function profileEntry(p){
+  const t = num(sd(p,"temp").chosen), m = finalMultiplier(p), v = volLimit(p), o = num(sd(p,"sweep").chosen), r = barResult(p), foot = num(sd(p,"coupon").foot);
+  const e = [["tag", luaStr(p.tag)]];
+  if (t) { e.push(["temperature", f(t,0)]); e.push(["first_layer_temperature", f(t-10,0)]); }
+  if (m) e.push(["extrusion_multiplier", f(m,4)]);
+  if (v) e.push(["filament_max_volumetric_speed", f(v,1)]);
+  if (o) e.push(["infill_overlap", luaStr(f(o,0)+"%")]);
+  if (r.g !== null) e.push(["xy_size_compensation", f(-r.g,3)]);
+  if (foot !== null) e.push(["elefant_foot_compensation", f(foot,2)]);
+  return e;
+}
+function profileLua(){
+  const lines = ["-- profile.lua: written by the PETG Dial-In Sheet on " + new Date().toISOString().slice(0,16).replace("T"," ") + ".",
+    "-- Keyed by printer name as PrusaSlicer shows it. Read by every command for the tag,",
+    "-- and by Tools > Apply values from profile.lua for the preset values.", "return {"];
+  for (const p of state.printers) {
+    if (p.example) continue;
+    lines.push("  [" + luaStr(p.name) + "] = {");
+    for (const [k, v] of profileEntry(p)) lines.push("    " + k + " = " + v + ",");
+    lines.push("  },");
+  }
+  lines.push("}");
+  return lines.join("\n");
+}
+
+// ---------- helper (localhost companion) ----------
+let helper = null, helperSeen = 0;
+async function api(path, body){
+  const r = await fetch(path, body ? { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) } : {});
+  const j = await r.json(); if (j.status) helper = j.status; if (!r.ok || j.ok === false) throw new Error(j.error || r.statusText); return j;
+}
+async function detectHelper(){
+  if (!/^https?:/.test(location.protocol)) return;
+  try { const r = await fetch("/api/status", {cache:"no-store"}); const j = await r.json(); if (j.helper) { helper = j; startLog(); document.body.classList.add("has-log"); render(); } } catch(e) {}
+}
+function helperBar(){
+  if (!helper) return "";
+  const h = helper;
+  const dot = ok => `<span class="dot ${ok?"done":"partial"}"></span>`;
+  return `<div class="helper">
+    <span class="st">${dot(h.plugins_dir_exists)} plugins ${esc(h.plugins_dir || "not found")}</span>
+    <span class="st">${dot(!!h.bundle_installed_version)} bundle ${h.bundle_installed_version ? "v"+esc(h.bundle_installed_version) + (h.bundle_installed_version!==h.bundle_source_version?" (source v"+esc(h.bundle_source_version)+")":"") : "not installed"}</span>
+    <span class="st">${dot(h.profile_exists)} profile.lua ${h.profile_exists?"saved":"none"}</span>
+    <span class="st">${dot(h.running)} PrusaSlicer ${h.running?"running":(h.prusaslicer_exists?"ready":"not found")}</span>
+    <span class="grow"></span>
+    <button class="btn small" type="button" data-helper="install">${h.bundle_installed_version?"Update bundle":"Install bundle"}</button>
+    <button class="btn small" type="button" data-helper="profile">Save profile.lua</button>
+    <button class="btn small primary" type="button" data-helper="launch" ${h.running?"disabled":""}>Launch PrusaSlicer</button>
+  </div>`;
+}
+async function helperAction(what){
+  try {
+    if (what === "install") { await api("/api/install", {}); toast("Bundle installed"); }
+    else if (what === "profile") { await api("/api/profile", { lua: profileLua() }); toast("profile.lua saved into the plugin"); }
+    else if (what === "launch") { await api("/api/launch", {}); toast("PrusaSlicer launched"); }
+    render();
+  } catch (e) { toast(e.message); render(); }
+}
+function startLog(){
+  const drawer = document.createElement("div"); drawer.className = "log"; drawer.id = "logDrawer";
+  drawer.innerHTML = `<div class="bar" id="logBar"><span>PrusaSlicer output</span><span class="grow"></span><span id="logCount">0</span><span id="logToggle">hide</span></div><ol id="logList"></ol>`;
+  document.body.appendChild(drawer);
+  try { if (localStorage.getItem(KEY + ":logmin") === "1") drawer.classList.add("min"); } catch(e){}
+  $("#logBar").addEventListener("click", () => { drawer.classList.toggle("min"); $("#logToggle").textContent = drawer.classList.contains("min") ? "show" : "hide"; try { localStorage.setItem(KEY + ":logmin", drawer.classList.contains("min") ? "1" : "0"); } catch(e){} });
+  let n = 0;
+  const es = new EventSource("/api/log?since=0");
+  es.onmessage = e => {
+    const ev = JSON.parse(e.data); if (ev.id <= helperSeen) return; helperSeen = ev.id;
+    if (ev.kind === "slicer") return;
+    n++; $("#logCount").textContent = n;
+    const li = document.createElement("li"); li.className = "ev-" + ev.kind; li.textContent = (ev.kind === "data" ? "DATA " + JSON.stringify(ev.data) : ev.text); $("#logList").appendChild(li); $("#logList").scrollTop = 1e9;
+    if (ev.kind === "data") onData(ev.data);
+    if (ev.kind === "helper" && /launched|exited|installed|wrote/.test(ev.text)) fetch("/api/status").then(r=>r.json()).then(j=>{ helper=j; renderHelperBar(); }).catch(()=>{});
+  };
+}
+function renderHelperBar(){ const el = $("#helperBar"); if (el) el.outerHTML = `<div id="helperBar">${helperBar()}</div>`; }
+function onData(d){
+  if (!d || !d.printer) return;
+  let p = state.printers.find(x => x.name === d.printer);
+  if (!p) { p = blankPrinter(d.printer, d.tag || d.printer.slice(0, 12)); state.printers.push(p); toast("Added " + d.printer + " from PrusaSlicer"); }
+  else if (p.example) { p.steps = {}; p.example = false; if (d.tag) p.tag = d.tag; toast("Replaced the example's numbers with your " + d.printer); }
+  else if (!p.tag && d.tag) p.tag = d.tag;
+  state.active = p.id;
+  const st = sd(p, d.step);
+  if (d.step === "slab") { st.x = d.x; st.y = d.y; st.z = d.z; st.posts = !!d.posts; if (d.density) p.density = d.density; if (d.extrusion_multiplier) p.baseMultiplier = d.extrusion_multiplier; st.slicer_expected_g = d.expected_g; }
+  if (d.step === "bar") { st.c0 = d.c0; st.w0 = d.width; st.d0 = d.hole; }
+  if (d.step === "coupon") { st.l0 = d.length; st.w0 = d.width; st.h0 = d.height; st.hole0 = d.hole; if (d.foot) st.foot = d.foot; }
+  if (d.step === "flow" && d.extrusion_multiplier) p.baseMultiplier = d.extrusion_multiplier;
+  if (d.step === "vol") { if (d.layer_height) p.layer = d.layer_height; if (d.nozzle) p.nozzle = d.nozzle; }
+  if (STEPS.some(s => s.id === d.step)) state.step = d.step;
+  save(); render();
+}
+
 function render(){
   renderRail();
   const st = STEPS.find(s => s.id === state.step);
@@ -429,6 +543,8 @@ document.addEventListener("click", e => {
   const pb = e.target.closest("[data-printer]"); if (pb) { state.active = pb.dataset.printer; render(); return; }
   const sb = e.target.closest("[data-step]"); if (sb) { state.step = sb.dataset.step; render(); window.scrollTo({top:0}); return; }
   const go = e.target.closest("[data-go]"); if (go) { state.step = go.dataset.go; render(); window.scrollTo({top:0}); return; }
+  const hb = e.target.closest("[data-helper]"); if (hb) { helperAction(hb.dataset.helper); return; }
+  const pc = e.target.closest("#profileCopy"); if (pc) { const t = $("#profileText"); navigator.clipboard && navigator.clipboard.writeText(t.value).then(()=>toast("Copied profile.lua")); return; }
 });
 $("#addPrinter").addEventListener("click", () => {
   const name = prompt("Printer name as PrusaSlicer shows it", "Original Prusa MK4S 0.4 nozzle"); if (!name) return;
@@ -457,6 +573,7 @@ $("#railToggle").addEventListener("click", () => $("#rail").classList.toggle("co
 if (window.matchMedia("(max-width:760px)").matches) $("#rail").classList.add("collapsed");
 
 render();
+detectHelper();
 })();
 </script>
 </body>

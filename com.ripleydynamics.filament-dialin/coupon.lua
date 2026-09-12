@@ -86,4 +86,6 @@ function execute(opts)
         tag, util.fmt(L), util.fmt(W), util.fmt(H), util.fmt(hole), perimeters,
         xy and util.fmt(xy, 3) or "preset", foot and util.fmt(foot, 3) or "preset"))
     util.log("each run centres a new coupon on the bed: press A (arrange) after adding several")
+    util.data("coupon", { printer = util.printer_name(bed), tag = tag, length = L, width = W, height = H, hole = hole,
+        perimeters = perimeters, xy = xy or 0, foot = foot or 0 })
 end

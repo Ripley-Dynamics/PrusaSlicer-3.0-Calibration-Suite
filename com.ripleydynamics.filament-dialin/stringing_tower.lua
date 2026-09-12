@@ -117,4 +117,6 @@ function execute(opts)
     if use_fan then
         util.log("the slicer may re-issue its own M106 when its cooling logic changes fan speed; keep the filament's fan settings constant for this test")
     end
+    util.data("string", { printer = util.printer_name(bed), tag = tag, start_temp = start, temp_step = step,
+        fan_start = fan_start, fan_step = fan_step, sections = n })
 end

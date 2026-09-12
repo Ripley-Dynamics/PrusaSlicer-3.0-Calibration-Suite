@@ -57,4 +57,7 @@ function execute(opts)
         "flow tower for %s: %d sections, M221 from %d%% down to %d%%, footprint %s x %s mm (measure each band against these)",
         tag, n, start, start - (n - 1) * step, util.fmt(w), util.fmt(d)))
     util.log("M221 persists on the printer after this print: put 'M221 S100' in your end G-code or start G-code")
+    util.data("flow", { printer = util.printer_name(bed), tag = tag, start_flow = start, flow_step = step, sections = n,
+        section_height = def.section_height, width = w, depth = d,
+        extrusion_multiplier = util.read_number(bed:material_presets(0), "extrusion_multiplier") or 0 })
 end

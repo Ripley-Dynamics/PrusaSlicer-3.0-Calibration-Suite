@@ -65,10 +65,16 @@ local function entry_dir(path)
     return path:gsub("[^/]+$", "")
 end
 
-local function exec_env(mock, entry_path)
+local function exec_env(mock, entry_path, virtual)
     local env = base_env()
     env.api = mock.api
     env.VolumeType = mock.VolumeType
+    mock.prints = mock.prints or {}
+    env.print = function(...)
+        local parts = {}
+        for i = 1, select("#", ...) do parts[#parts + 1] = tostring((select(i, ...))) end
+        mock.prints[#mock.prints + 1] = table.concat(parts, "\t")
+    end
     local cache = {}
     local dir = entry_dir(entry_path)
     env.require = function(name)
@@ -77,6 +83,10 @@ local function exec_env(mock, entry_path)
         assert(name:sub(1, 1) ~= "/", "require: absolute path rejected: " .. name)
         if cache[name] ~= nil then
             return cache[name]
+        end
+        if virtual and virtual[name] ~= nil then
+            cache[name] = virtual[name]
+            return virtual[name]
         end
         local r = load_in(dir .. name .. ".lua", env)
         if r == nil then r = true end
@@ -101,7 +111,7 @@ end
 -- Runs one command with the mock. Returns mock, env, err (err nil on success).
 local function run_command(path, overrides, mock_opts)
     local mock = Mock.new(mock_opts)
-    local env = exec_env(mock, path)
+    local env = exec_env(mock, path, mock_opts and mock_opts.modules)
     load_in(path, env)
     assert(type(env.info) == "table" and type(env.execute) == "function", path .. " is not a command")
     local opts = defaults_from(env.info, overrides)
@@ -220,7 +230,7 @@ test("every file evaluates without api/require (discovery scan)", function()
     for _, m in ipairs(modules) do
         check(m.ok, m.path .. " failed at discovery: " .. tostring(m.err))
     end
-    check(#commands == 10, "expected 10 commands, found " .. #commands)
+    check(#commands == 11, "expected 11 commands, found " .. #commands)
 end)
 
 test("command metadata is valid for alpha11", function()
@@ -578,9 +588,74 @@ test("nozzle_wipe", function()
     must_fail(cmd("nozzle_wipe"), { last = 1 }, "last >= first")
 end)
 
+local function data_line(mock)
+    for _, l in ipairs(mock.prints or {}) do
+        if l:find("[filament-dialin] DATA ", 1, true) then return l end
+    end
+    return nil
+end
+local function parse_data(line)
+    local out = {}
+    local body = line:match("DATA (.*)$")
+    for k, v in body:gmatch('([%w_]+)=("[^"]*")') do out[k] = v:sub(2, -2) end
+    for k, v in body:gmatch('([%w_]+)=([^" ]+)') do if out[k] == nil then out[k] = tonumber(v) or v end end
+    return out
+end
+
+test("every command prints one machine-readable DATA line", function()
+    local expected_step = { temp_tower = "temp", flow_tower = "flow", volumetric_tower = "vol", sweep_plate = "sweep", slab = "slab",
+        shrink_bar = "bar", coupon = "coupon", stringing_tower = "string", apply_results = "apply" }
+    for _, f in ipairs(commands) do
+        local id = f:match("([%w_]+)%.lua$")
+        if expected_step[id] then
+            local mock = run_command(f)
+            local line = data_line(mock)
+            check(line, id .. " printed no DATA line")
+            local d = parse_data(line)
+            check(d.step == expected_step[id], id .. " step field: " .. tostring(d.step))
+            check(d.printer == "Original Prusa MK4S 0.4 nozzle", id .. " printer field")
+            check(d.tag == "MK4S 0.4", id .. " tag field: " .. tostring(d.tag))
+            local count = 0
+            for _, l in ipairs(mock.prints) do if l:find("DATA ", 1, true) then count = count + 1 end end
+            check(count == 1, id .. " printed " .. count .. " DATA lines")
+        end
+    end
+    local d = parse_data(data_line(run_command(cmd("slab"))))
+    check(near(d.expected_g, 93.6346, 1e-3) and near(d.volume_cm3, 73.728, 1e-6) and d.posts == "true", "slab numbers in DATA: " .. data_line(run_command(cmd("slab"))))
+    local d2 = parse_data(data_line(run_command(cmd("slab"), { note = 'lot "A" \\ 42' })))
+    check(d2.step == "slab", "quotes and backslashes in strings do not break the line")
+    local d3 = parse_data(data_line(run_command(cmd("shrink_bar"))))
+    check(d3.c0 == 130 and d3.hole == 6, "bar nominals in DATA")
+end)
+
+test("profile.lua supplies the tag and apply_profile writes the values", function()
+    local profile = { ["Original Prusa MK4S 0.4 nozzle"] = { tag = "MK4S #3", temperature = 245, first_layer_temperature = 235,
+        extrusion_multiplier = 0.9752, filament_max_volumetric_speed = 15.3, infill_overlap = "15%", xy_size_compensation = -0.07 } }
+    local mock = run_command(cmd("temp_tower"), nil, { modules = { profile = profile } })
+    check(has_text(single_object(mock), "MK4S #3 TEMP"), "tag from profile")
+    local mock2 = run_command(cmd("temp_tower"), { tag = "P9" }, { modules = { profile = profile } })
+    check(has_text(single_object(mock2), "P9 TEMP"), "typed tag still wins")
+    local mock3 = run_command(cmd("apply_profile"), nil, { modules = { profile = profile } })
+    local m = set_values(mock3.bed.material)
+    check(m.temperature == 245 and m.first_layer_temperature == 235 and near(m.extrusion_multiplier, 0.9752) and near(m.filament_max_volumetric_speed, 15.3), "material values from profile")
+    check(m.min_fan_speed == nil, "absent keys are left alone")
+    local p = set_values(mock3.bed.print)
+    check(p.infill_overlap == "15%" and p.fill_density == "100%", "print values from profile")
+    check(#mock3.objects == 0, "adds no object")
+    local d = parse_data(data_line(mock3))
+    check(d.step == "apply_profile" and d.tag == "MK4S #3" and d.changed == 7, "apply_profile DATA line: " .. data_line(mock3))
+    local mock4 = run_command(cmd("apply_profile"), { print_preset = false }, { modules = { profile = profile } })
+    check(#mock4.bed.print.set_log == 0, "print values skipped when unchecked")
+    must_fail(cmd("apply_profile"), nil, "no entry for printer")
+    local lower = { ["original prusa mk4s 0.4 nozzle"] = { tag = "LC" } }
+    check(has_text(single_object(run_command(cmd("coupon"), nil, { modules = { profile = lower } })), "LC"), "printer name match is case-insensitive")
+    local mock5 = run_command(cmd("coupon"))
+    check(has_text(single_object(mock5), "MK4S 0.4"), "no profile.lua at all falls back to the derived tag")
+end)
+
 test("every command tolerates a printer without nozzle feature", function()
     for _, f in ipairs(commands) do
-        local mock, _, err = run_command(f, nil, { no_nozzle = true, printer_name = "" })
+        local mock, _, err = run_command(f, nil, { no_nozzle = true, printer_name = "", modules = { profile = { ["unknown printer"] = { tag = "X", temperature = 240 } } } })
         check(err == nil, f .. " failed: " .. tostring(err))
     end
 end)

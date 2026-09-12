@@ -66,4 +66,5 @@ function execute(opts)
 
     util.log(changed .. " preset value(s) written to the selected presets for " .. util.printer_name(bed))
     util.log("the presets are modified but not saved: save the filament preset under a printer-specific name to keep them")
+    util.data("apply", { printer = util.printer_name(bed), tag = util.resolve_tag(bed, ""), changed = changed })
 end

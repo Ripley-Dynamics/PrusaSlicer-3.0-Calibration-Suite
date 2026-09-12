@@ -45,6 +45,7 @@ on each machine (see the API doc's packaging page).
 | 7. Reference coupon | 50 × 25 × 10 mm solid block with a 10 mm hole, tag on the front, note on the back | Length, width, height, hole with calipers; top finish | `xy_size_compensation`, `elefant_foot_compensation` |
 | 8. Stringing tower | Two pillars, temperature and optional fan steps | Stringing per band | temperature, fan limits |
 | 9. Apply dialed-in values | Nothing printed. Writes the chosen values into the selected filament and print presets and reads them back | The application log | the presets |
+| Tools / Apply values from profile.lua | Nothing printed. Writes the values the sheet saved in `profile.lua` for the selected printer | The application log or the helper's log drawer | the presets |
 | Tools / Periodic nozzle wipe G-code | Nothing printed. Inserts a brush-wipe routine every N mm of height on the bed's custom G-code list | | production prints, once a brush is fitted |
 
 Every tower puts the printer tag on the back of its plinth; the plate, slab,
@@ -143,13 +144,61 @@ per-layer G-code list, so use it on production prints, not on the towers.
 
 PrusaSlicer's plugin API has no window or panel API; the only interface a
 plugin gets is the automatic Run dialog. The step-by-step walkthrough
-therefore lives beside PrusaSlicer as a single offline page:
-[`wizard/index.html`](wizard/index.html). Open it in any browser. For each
-printer it shows which command to run and the dialog values to type, takes
-your measurements, and computes the results: the extrusion multiplier from
-the slab's mass, shrinkage and XY growth from the bar, deviations on the
-coupon, and the final list of values for the Apply command. Records stay in
-the browser; Export JSON moves them between machines or into version control.
+therefore lives beside PrusaSlicer as a single page:
+[`wizard/index.html`](wizard/index.html). Open it in any browser, or run it
+through the helper below. For each printer it shows which command to run and
+the dialog values to type, takes your measurements, and computes the results:
+the extrusion multiplier from the slab's mass, shrinkage and XY growth from
+the bar, deviations on the coupon, and the final values for the Apply
+command. Records stay in the browser; Export shows JSON to copy between
+machines.
+
+### profile.lua: the sheet's values inside the plugin
+
+Step 9 of the sheet writes a `profile.lua`, keyed by printer name as
+PrusaSlicer shows it, with the tag and the dialed-in values for each
+printer. Put it in the bundle folder (the helper does this with one click)
+and:
+
+- every command engraves the profile's tag when the dialog's tag field is
+  blank, so parts are labelled consistently without typing;
+- **Tools > Apply values from profile.lua** writes the temperatures,
+  multiplier, volumetric limit, fan and slowdown values into the selected
+  filament preset and the overlap into the print preset, in one click,
+  instead of retyping them into command 9.
+
+No rescan is needed after changing `profile.lua`; it is read on every Run.
+
+### The helper: running the sheet beside PrusaSlicer
+
+`helper/dialin_helper.py` is a single standard-library Python script for the
+PC that drives the printers. Start it from the repo folder:
+
+```
+python3 helper/dialin_helper.py
+```
+
+It opens the sheet at `http://127.0.0.1:8765/` and adds a status bar and a
+log drawer to it:
+
+- **Install / Update bundle** copies the plugin into PrusaSlicer's user
+  plugins folder (detected from the PrusaSlicer-alpha, -beta or release data
+  folder; override with `--plugins-dir`). An existing `profile.lua` is kept.
+- **Save profile.lua** writes the sheet's profile straight into the bundle.
+- **Launch PrusaSlicer** starts it as a child process (path detected or set
+  with `--prusaslicer`; on Windows point it at `prusa-slicer-console.exe`,
+  the GUI executable has no console output) and streams its output into the
+  log drawer. Plugin errors, which PrusaSlicer otherwise only writes to its
+  log, appear there in red.
+- Every command prints one `DATA` line with the printer name, tag and its
+  numbers. The helper forwards these and the sheet acts on them: it selects
+  or creates the printer, jumps to that step, and records the slab's nominal
+  volume and expected mass, the bar's nominal distances and the coupon's
+  nominal sizes as PrusaSlicer computed them.
+
+Measurements still come from your calipers and scale; the helper cannot
+press Run in PrusaSlicer, and PrusaSlicer cannot read the sheet. Paths are
+remembered in `dialin-helper.json` in your config folder.
 
 ### One build plate per test
 
@@ -168,9 +217,9 @@ The sheet repeats this reminder on each step.
   is validated inside `execute`, and blank text fields mean "leave the preset
   value alone".
 - **No dialog feedback.** A failed run is written to PrusaSlicer's log, not to
-  the dialog. Start PrusaSlicer from a terminal to see the `[filament-dialin]`
-  lines that each command prints (expected mass, section speeds, values
-  written, warnings).
+  the dialog. Start PrusaSlicer from a terminal, or through the helper, to
+  see the `[filament-dialin]` lines that each command prints (expected mass,
+  section speeds, values written, warnings).
 - **Custom G-code is replaced.** The towers and the nozzle wipe clear the
   bed's custom G-code list before inserting their own entries (undo restores
   the old list).
@@ -220,6 +269,7 @@ prusaslicer-filament-dialin/
   README.md                          this file
   run-tests.sh                       runs the suite
   wizard/index.html                  the step-by-step dial-in sheet (offline page)
+  helper/dialin_helper.py            serves the sheet beside PrusaSlicer, installs the bundle, streams its output
   com.ripleydynamics.filament-dialin/   the bundle to copy into the user plugins folder
     manifest.json
     temp_tower.lua                   1. temperature tower
@@ -231,7 +281,9 @@ prusaslicer-filament-dialin/
     coupon.lua                       7. reference coupon
     stringing_tower.lua              8. stringing tower
     apply_results.lua                9. write values into presets
+    apply_profile.lua                Tools: write values from profile.lua
     nozzle_wipe.lua                  Tools: periodic nozzle wipe G-code
+    profile.lua                      (optional) written by the sheet or the helper
     lib/util.lua                     value parsing, preset readers, logging
     lib/label.lua                    engraved text on front, back and top faces
     lib/tower.lua                    stacked-section tower builder and overhang wing

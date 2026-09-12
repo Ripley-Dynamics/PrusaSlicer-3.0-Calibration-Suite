@@ -166,13 +166,86 @@ function M.short_printer_tag(name, max_len)
     return s
 end
 
--- Uses the typed tag when present, otherwise derives one from the printer.
+-- ---------------------------------------------------------------------------
+-- Machine-readable output. The dial-in helper (helper/dialin_helper.py)
+-- reads PrusaSlicer's stdout and forwards lines that start with the prefix
+-- below to the dial-in sheet. Values are key=value pairs: numbers bare,
+-- strings double-quoted with \" and \\ escaped, booleans true/false.
+-- ---------------------------------------------------------------------------
+
+local function encode_value(v)
+    local t = type(v)
+    if t == "number" then
+        if v == math.floor(v) and math.abs(v) < 1e15 then
+            return tostring(math.tointeger(v) or v)
+        end
+        return string.format("%.6g", v)
+    elseif t == "boolean" then
+        return v and "true" or "false"
+    else
+        local s = tostring(v):gsub("\\", "\\\\"):gsub('"', '\\"'):gsub("\n", " ")
+        return '"' .. s .. '"'
+    end
+end
+
+function M.data(step, fields)
+    local keys = {}
+    for k in pairs(fields) do
+        keys[#keys + 1] = k
+    end
+    table.sort(keys)
+    local parts = { "step=" .. encode_value(step) }
+    for _, k in ipairs(keys) do
+        parts[#parts + 1] = k .. "=" .. encode_value(fields[k])
+    end
+    print(M.LOG_PREFIX .. "DATA " .. table.concat(parts, " "))
+end
+
+-- ---------------------------------------------------------------------------
+-- profile.lua: optional file at the bundle root, written by the dial-in
+-- sheet. It returns a table keyed by printer name (as PrusaSlicer shows it)
+-- with the tag and the dialed-in values for that printer.
+-- ---------------------------------------------------------------------------
+
+function M.load_profiles()
+    local ok, profiles = pcall(require, "profile")
+    if ok and type(profiles) == "table" then
+        return profiles
+    end
+    return {}
+end
+
+-- The profile entry for the selected printer, or nil.
+function M.profile(bed)
+    local name = M.printer_name(bed)
+    local profiles = M.load_profiles()
+    local entry = profiles[name]
+    if entry == nil then
+        for key, value in pairs(profiles) do
+            if type(key) == "string" and type(value) == "table" and key:lower() == name:lower() then
+                entry = value
+                break
+            end
+        end
+    end
+    if type(entry) == "table" then
+        return entry
+    end
+    return nil
+end
+
+-- Uses the typed tag when present, then the profile's tag, then one derived
+-- from the printer name.
 function M.resolve_tag(bed, typed_tag)
     if type(typed_tag) == "string" then
         local t = typed_tag:gsub("^%s+", ""):gsub("%s+$", "")
         if t ~= "" then
             return t
         end
+    end
+    local entry = M.profile(bed)
+    if entry and type(entry.tag) == "string" and entry.tag ~= "" then
+        return entry.tag
     end
     return M.short_printer_tag(M.printer_name(bed))
 end

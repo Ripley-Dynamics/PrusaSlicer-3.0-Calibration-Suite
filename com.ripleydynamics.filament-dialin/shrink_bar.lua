@@ -69,4 +69,5 @@ function execute(opts)
         tag, util.fmt(L), util.fmt(W), util.fmt(H), util.fmt(d), util.fmt(centre_distance, 2)))
     util.log("measure hole centre distance C as (near-edge gap + far-edge gap) / 2: growth cancels, so shrinkage = 1 - C / " .. util.fmt(centre_distance, 2))
     util.log("measure width Wm and hole diameter Dm: XY growth per side = (Wm - " .. util.fmt(W, 2) .. " x (1 - shrinkage)) / 2, cross-check with (" .. util.fmt(d, 2) .. " x (1 - shrinkage) - Dm) / 2")
+    util.data("bar", { printer = util.printer_name(bed), tag = tag, length = L, width = W, height = H, hole = d, c0 = centre_distance })
 end

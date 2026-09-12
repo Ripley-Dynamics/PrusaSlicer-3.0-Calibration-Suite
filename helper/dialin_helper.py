@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""Dial-in helper: runs the dial-in sheet beside PrusaSlicer.
+
+Serves wizard/index.html at http://127.0.0.1:8765, installs the plugin bundle
+into PrusaSlicer's user plugins folder, writes profile.lua into it from the
+sheet, launches PrusaSlicer as a child process and streams its output to the
+sheet so the plugin's numbers and errors show up there.
+
+Standard library only. Python 3.8 or newer.
+
+    python3 helper/dialin_helper.py                # auto-detect everything
+    python3 helper/dialin_helper.py --prusaslicer "C:\\Program Files\\Prusa3D\\PrusaSlicer\\prusa-slicer-console.exe"
+    python3 helper/dialin_helper.py --plugins-dir ~/.config/PrusaSlicer-alpha/lua
+"""
+import argparse
+import collections
+import json
+import os
+import platform
+import queue
+import re
+import shutil
+import subprocess
+import sys
+import threading
+import time
+import webbrowser
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+
+BUNDLE_ID = "com.ripleydynamics.filament-dialin"
+PREFIX = "[filament-dialin] "
+HERE = Path(__file__).resolve().parent
+REPO = HERE.parent
+SHEET = REPO / "wizard" / "index.html"
+BUNDLE_SRC = REPO / BUNDLE_ID
+
+
+# ---------------------------------------------------------------- locations
+def config_path():
+    if platform.system() == "Windows":
+        base = Path(os.environ.get("APPDATA", Path.home()))
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return base / "dialin-helper.json"
+
+
+def load_config():
+    try:
+        return json.loads(config_path().read_text())
+    except Exception:
+        return {}
+
+
+def save_config(cfg):
+    try:
+        config_path().parent.mkdir(parents=True, exist_ok=True)
+        config_path().write_text(json.dumps(cfg, indent=2))
+    except Exception as e:
+        print("could not save config:", e)
+
+
+def data_dir_candidates():
+    """PrusaSlicer user data directories, alpha/beta builds first."""
+    system = platform.system()
+    names = ["PrusaSlicer-alpha", "PrusaSlicer-beta", "PrusaSlicer"]
+    if system == "Windows":
+        base = Path(os.environ.get("APPDATA", Path.home()))
+        return [base / n for n in names]
+    if system == "Darwin":
+        base = Path.home() / "Library" / "Application Support"
+        return [base / n for n in names]
+    base = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+    return [base / n for n in names]
+
+
+def detect_plugins_dir():
+    for d in data_dir_candidates():
+        if d.is_dir():
+            return d / "lua"
+    return None
+
+
+def detect_prusaslicer():
+    system = platform.system()
+    candidates = []
+    if system == "Windows":
+        for root in [os.environ.get("ProgramFiles", r"C:\Program Files"), os.environ.get("LOCALAPPDATA", "")]:
+            if root:
+                candidates += [
+                    Path(root) / "Prusa3D" / "PrusaSlicer" / "prusa-slicer-console.exe",
+                    Path(root) / "Prusa3D" / "PrusaSlicer-alpha" / "prusa-slicer-console.exe",
+                    Path(root) / "Programs" / "PrusaSlicer" / "prusa-slicer-console.exe",
+                ]
+    elif system == "Darwin":
+        for app in ["PrusaSlicer-alpha", "PrusaSlicer-beta", "PrusaSlicer"]:
+            candidates += [Path("/Applications") / f"{app}.app" / "Contents" / "MacOS" / "PrusaSlicer",
+                           Path.home() / "Applications" / f"{app}.app" / "Contents" / "MacOS" / "PrusaSlicer"]
+    else:
+        for name in ["prusa-slicer", "PrusaSlicer", "prusa-slicer-alpha"]:
+            found = shutil.which(name)
+            if found:
+                candidates.append(Path(found))
+        candidates += sorted(Path.home().glob("**/PrusaSlicer*.AppImage"))[:3]
+    for c in candidates:
+        if c and Path(c).exists():
+            return str(c)
+    return None
+
+
+# ---------------------------------------------------------------- state
+class Helper:
+    def __init__(self, args):
+        cfg = load_config()
+        self.plugins_dir = Path(args.plugins_dir or cfg.get("plugins_dir") or detect_plugins_dir() or "")
+        self.prusaslicer = args.prusaslicer or cfg.get("prusaslicer") or detect_prusaslicer()
+        self.process = None
+        self.events = collections.deque(maxlen=500)
+        self.clients = []
+        self.lock = threading.Lock()
+        self.seq = 0
+        save_config({"plugins_dir": str(self.plugins_dir) if str(self.plugins_dir) else "", "prusaslicer": self.prusaslicer or ""})
+
+    # -- bundle
+    @property
+    def bundle_dst(self):
+        return self.plugins_dir / BUNDLE_ID if str(self.plugins_dir) else None
+
+    def manifest_version(self, folder):
+        try:
+            return json.loads((folder / "manifest.json").read_text()).get("version")
+        except Exception:
+            return None
+
+    def status(self):
+        dst = self.bundle_dst
+        return {
+            "helper": True,
+            "version": 1,
+            "platform": platform.system(),
+            "repo": str(REPO),
+            "plugins_dir": str(self.plugins_dir) if str(self.plugins_dir) else None,
+            "plugins_dir_exists": bool(str(self.plugins_dir)) and self.plugins_dir.parent.is_dir(),
+            "bundle_source_version": self.manifest_version(BUNDLE_SRC),
+            "bundle_installed_version": self.manifest_version(dst) if dst else None,
+            "profile_exists": bool(dst) and (dst / "profile.lua").exists(),
+            "prusaslicer": self.prusaslicer,
+            "prusaslicer_exists": bool(self.prusaslicer) and Path(self.prusaslicer).exists(),
+            "running": self.process is not None and self.process.poll() is None,
+            "events": len(self.events),
+        }
+
+    def install(self):
+        if not str(self.plugins_dir):
+            raise RuntimeError("No PrusaSlicer user data folder found. Start PrusaSlicer 3.0 once, or pass --plugins-dir.")
+        if not BUNDLE_SRC.is_dir():
+            raise RuntimeError(f"Bundle source missing: {BUNDLE_SRC}")
+        dst = self.bundle_dst
+        self.plugins_dir.mkdir(parents=True, exist_ok=True)
+        keep = None
+        if (dst / "profile.lua").exists():
+            keep = (dst / "profile.lua").read_text()
+        if dst.exists():
+            shutil.rmtree(dst)
+        shutil.copytree(BUNDLE_SRC, dst, ignore=shutil.ignore_patterns("*.pyc", ".DS_Store", "__pycache__"))
+        if keep is not None:
+            (dst / "profile.lua").write_text(keep)
+        self.emit("helper", f"installed bundle {self.manifest_version(dst)} into {dst}")
+        return str(dst)
+
+    def write_profile(self, lua):
+        if not lua.strip().startswith("--") and not lua.strip().startswith("return"):
+            raise RuntimeError("profile.lua must be a Lua chunk returning a table")
+        dst = self.bundle_dst
+        if not dst or not dst.is_dir():
+            self.install()
+            dst = self.bundle_dst
+        (dst / "profile.lua").write_text(lua)
+        self.emit("helper", f"wrote profile.lua ({len(lua)} bytes); a running PrusaSlicer picks it up on the next Run, no rescan needed")
+        return str(dst / "profile.lua")
+
+    # -- process
+    def launch(self):
+        if self.process is not None and self.process.poll() is None:
+            return "already running"
+        if not self.prusaslicer or not Path(self.prusaslicer).exists():
+            raise RuntimeError("PrusaSlicer executable not found. Pass --prusaslicer PATH (on Windows use prusa-slicer-console.exe).")
+        self.process = subprocess.Popen([self.prusaslicer], stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                        text=True, bufsize=1, errors="replace")
+        threading.Thread(target=self._reader, daemon=True).start()
+        self.emit("helper", f"launched {self.prusaslicer} (pid {self.process.pid})")
+        return "launched"
+
+    def _reader(self):
+        proc = self.process
+        for raw in proc.stdout:
+            self.ingest(raw.rstrip("\r\n"))
+        code = proc.wait()
+        self.emit("helper", f"PrusaSlicer exited with code {code}")
+
+    def ingest(self, line):
+        if PREFIX in line:
+            body = line.split(PREFIX, 1)[1]
+            if body.startswith("DATA "):
+                self.emit("data", body, parse_data(body[5:]))
+            elif body.lower().startswith("warning") or "could not set" in body:
+                self.emit("warning", body)
+            else:
+                self.emit("plugin", body)
+        elif re.search(r"\b(lua|plugin)\b", line, re.I) and re.search(r"error|fail|exception|cannot|invalid", line, re.I):
+            self.emit("error", line)
+        else:
+            self.emit("slicer", line)
+
+    # -- events
+    def emit(self, kind, text, data=None):
+        with self.lock:
+            self.seq += 1
+            ev = {"id": self.seq, "ts": time.time(), "kind": kind, "text": text}
+            if data is not None:
+                ev["data"] = data
+            self.events.append(ev)
+            for q in list(self.clients):
+                q.put(ev)
+        if kind != "slicer":
+            print(f"{kind:8} {text}")
+
+    def subscribe(self, since):
+        q = queue.Queue()
+        with self.lock:
+            backlog = [e for e in self.events if e["id"] > since]
+            self.clients.append(q)
+        return q, backlog
+
+    def unsubscribe(self, q):
+        with self.lock:
+            if q in self.clients:
+                self.clients.remove(q)
+
+
+DATA_RE = re.compile(r'(\w+)=("(?:[^"\\]|\\.)*"|\S+)')
+
+
+def parse_data(body):
+    out = {}
+    for key, val in DATA_RE.findall(body):
+        if val.startswith('"'):
+            out[key] = val[1:-1].replace('\\"', '"').replace("\\\\", "\\")
+        elif val in ("true", "false"):
+            out[key] = val == "true"
+        else:
+            try:
+                out[key] = float(val) if ("." in val or "e" in val) else int(val)
+            except ValueError:
+                out[key] = val
+    return out
+
+
+# ---------------------------------------------------------------- http
+class Handler(BaseHTTPRequestHandler):
+    helper = None  # set at startup
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def _json(self, obj, code=200):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _body(self):
+        n = int(self.headers.get("Content-Length") or 0)
+        return json.loads(self.rfile.read(n) or b"{}")
+
+    def do_GET(self):
+        h = self.helper
+        if self.path in ("/", "/index.html"):
+            try:
+                body = SHEET.read_bytes()
+            except Exception:
+                self.send_error(404, "wizard/index.html not found next to the helper")
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(body)
+        elif self.path == "/api/status":
+            self._json(h.status())
+        elif self.path.startswith("/api/log"):
+            since = 0
+            m = re.search(r"since=(\d+)", self.path)
+            if m:
+                since = int(m.group(1))
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            q, backlog = h.subscribe(since)
+            try:
+                for ev in backlog:
+                    self._sse(ev)
+                while True:
+                    try:
+                        ev = q.get(timeout=15)
+                        self._sse(ev)
+                    except queue.Empty:
+                        self.wfile.write(b": keepalive\n\n")
+                        self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass
+            finally:
+                h.unsubscribe(q)
+        else:
+            self.send_error(404)
+
+    def _sse(self, ev):
+        self.wfile.write(f"id: {ev['id']}\ndata: {json.dumps(ev)}\n\n".encode())
+        self.wfile.flush()
+
+    def do_POST(self):
+        h = self.helper
+        try:
+            if self.path == "/api/install":
+                self._json({"ok": True, "path": h.install(), "status": h.status()})
+            elif self.path == "/api/profile":
+                self._json({"ok": True, "path": h.write_profile(self._body().get("lua", "")), "status": h.status()})
+            elif self.path == "/api/launch":
+                self._json({"ok": True, "result": h.launch(), "status": h.status()})
+            elif self.path == "/api/config":
+                b = self._body()
+                if b.get("plugins_dir"):
+                    h.plugins_dir = Path(b["plugins_dir"]).expanduser()
+                if b.get("prusaslicer"):
+                    h.prusaslicer = str(Path(b["prusaslicer"]).expanduser())
+                save_config({"plugins_dir": str(h.plugins_dir), "prusaslicer": h.prusaslicer or ""})
+                self._json({"ok": True, "status": h.status()})
+            elif self.path == "/api/test-line":
+                h.ingest(self._body().get("line", ""))
+                self._json({"ok": True})
+            else:
+                self.send_error(404)
+        except Exception as e:
+            self._json({"ok": False, "error": str(e), "status": h.status()}, 400)
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Run the dial-in sheet beside PrusaSlicer.")
+    ap.add_argument("--port", type=int, default=8765)
+    ap.add_argument("--plugins-dir", help="PrusaSlicer user plugins folder (Plugins > Show User Plugins Folder)")
+    ap.add_argument("--prusaslicer", help="PrusaSlicer executable (Windows: prusa-slicer-console.exe)")
+    ap.add_argument("--no-browser", action="store_true")
+    ap.add_argument("--launch", action="store_true", help="launch PrusaSlicer immediately")
+    args = ap.parse_args()
+
+    Handler.helper = Helper(args)
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    url = f"http://127.0.0.1:{args.port}/"
+    st = Handler.helper.status()
+    print(f"dial-in helper at {url}")
+    print(f"  plugins folder : {st['plugins_dir'] or 'not found (pass --plugins-dir)'}")
+    print(f"  bundle         : source {st['bundle_source_version']}, installed {st['bundle_installed_version'] or 'no'}")
+    print(f"  PrusaSlicer    : {st['prusaslicer'] or 'not found (pass --prusaslicer)'}")
+    if args.launch:
+        try:
+            Handler.helper.launch()
+        except Exception as e:
+            print("launch failed:", e)
+    if not args.no_browser:
+        threading.Timer(0.5, lambda: webbrowser.open(url)).start()
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        p = Handler.helper.process
+        if p is not None and p.poll() is None:
+            print("PrusaSlicer is still running; leaving it open")
+
+
+if __name__ == "__main__":
+    main()

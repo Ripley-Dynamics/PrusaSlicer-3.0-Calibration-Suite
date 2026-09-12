@@ -126,4 +126,5 @@ function execute(opts)
     util.log(string.format("sweep plate for %s: %s = %s ... %s across %d blocks (%s mm wide)",
         tag, key, texts[1], texts[n], n, util.fmt(n * size + (n - 1) * gap)))
     util.log("an unknown or non-numeric key is silently ignored by PrusaSlicer; check the per-volume settings in the object list")
+    util.data("sweep", { printer = util.printer_name(bed), tag = tag, setting = key, first = texts[1], last = texts[n], samples = n })
 end

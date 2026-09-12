@@ -102,4 +102,7 @@ function execute(opts)
         util.fmt(mass_g, 2), util.fmt(density, 3), density_source))
     util.log(string.format("weigh the printed slab: new extrusion multiplier = %s x %s / measured grams",
         em and util.fmt(em, 4) or "current multiplier", util.fmt(mass_g, 2)))
+    util.data("slab", { printer = util.printer_name(bed), tag = tag, x = X, y = Y, z = Z, posts = opts.posts and true or false,
+        volume_cm3 = volume_cm3, density = density, density_source = density_source, expected_g = mass_g,
+        extrusion_multiplier = em or 0 })
 end

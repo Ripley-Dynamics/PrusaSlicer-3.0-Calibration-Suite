@@ -79,4 +79,6 @@ function execute(opts)
         "temperature tower for %s: %d sections of %s mm, %d C down to %d C, %s mm tall, layer %s mm",
         tag, n, util.fmt(def.section_height), start, start - (n - 1) * step, util.fmt(def.total_height), util.fmt(lh, 3)))
     util.log("the plinth prints at the preset temperature; M104 changes land on each section's first layer")
+    util.data("temp", { printer = util.printer_name(bed), tag = tag, start_temp = start, temp_step = step, sections = n,
+        section_height = def.section_height, width = w, depth = d, layer_height = lh })
 end

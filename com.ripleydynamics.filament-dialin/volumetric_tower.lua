@@ -91,4 +91,6 @@ function execute(opts)
     for i, s in ipairs(sections) do
         util.log(string.format("  section %d: %s mm3/s -> %s mm/s", i, util.fmt(s.flow, 2), util.fmt(s.speed, 1)))
     end
+    util.data("vol", { printer = util.printer_name(bed), tag = tag, min_flow = min_flow, max_flow = max_flow, sections = n,
+        extrusion_width = ew, layer_height = lh, area = util.extrusion_area(ew, lh), nozzle = nozzle })
 end
