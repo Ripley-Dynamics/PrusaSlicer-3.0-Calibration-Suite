@@ -2,7 +2,7 @@ info = {
     id = "overlap",
     type = "project.plugin",
     title = "Infill overlap calibration (row of 100% infill blocks)",
-    menu = "Filament Dial-In/6. Infill overlap calibration",
+    menu = "Filament Dial-In/7. Infill overlap calibration",
     params = {
         { name = "min_value", label = "Lowest overlap (first block), e.g. 10%", type = "string", default = "10%" },
         { name = "max_value", label = "Highest overlap (last block), e.g. 35%", type = "string", default = "35%" },

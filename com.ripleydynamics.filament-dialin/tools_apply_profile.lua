@@ -25,6 +25,7 @@ local MATERIAL_KEYS = {
     { "min_fan_speed", "min fan speed", "int" },
     { "max_fan_speed", "max fan speed", "int" },
     { "slowdown_below_layer_time", "slowdown below layer time", "int" },
+    { "min_print_speed", "minimum print speed", "number" },
 }
 
 function execute(opts)

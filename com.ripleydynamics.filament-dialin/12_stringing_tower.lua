@@ -2,7 +2,7 @@ info = {
     id = "stringing_tower",
     type = "project.plugin",
     title = "Stringing tower (temperature and fan steps)",
-    menu = "Filament Dial-In/9. Stringing tower",
+    menu = "Filament Dial-In/12. Stringing tower",
     params = {
         { name = "max_temp", label = "Hottest section [C] (bottom)", type = "int", default = 250 },
         { name = "min_temp", label = "Coolest section [C] (top)", type = "int", default = 225 },

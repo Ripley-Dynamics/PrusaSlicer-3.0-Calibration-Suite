@@ -2,7 +2,7 @@ info = {
     id = "pa_line",
     type = "project.plugin",
     title = "Pressure advance line test (OrcaSlicer PA Line), recommended",
-    menu = "Filament Dial-In/3. Pressure advance line (recommended)",
+    menu = "Filament Dial-In/4. Pressure advance line (recommended)",
     params = {
         { name = "min_pa", label = "Lowest pressure advance (bottom line), e.g. 0.00", type = "string", default = "0.00" },
         { name = "max_pa", label = "Highest pressure advance (top line), e.g. 0.08", type = "string", default = "0.08" },

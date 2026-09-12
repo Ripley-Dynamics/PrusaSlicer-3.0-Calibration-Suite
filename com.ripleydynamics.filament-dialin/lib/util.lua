@@ -203,6 +203,9 @@ M.BASELINE_KEYS = {
     { "material", "filament_max_volumetric_speed", "p_max_volumetric_speed" },
     { "material", "filament_density", "p_density" },
     { "material", "pressure_advance_value", "p_pressure_advance" },
+    { "material", "min_fan_speed", "p_min_fan" },
+    { "material", "max_fan_speed", "p_max_fan" },
+    { "material", "slowdown_below_layer_time", "p_slowdown" },
 }
 
 function M.baseline(bed)

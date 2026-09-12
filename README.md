@@ -40,16 +40,19 @@ menu follows the procedure).
 | Menu entry | What it adds | What you read off it | What it feeds |
 | --- | --- | --- | --- |
 | 1. Temperature tower | PrusaSlicer's own calibration model (80 × 10 mm base, 10 mm steps with bridges and overhangs), one `M104` per step, printed solid | Bridge sag, overhang fray, gloss, layer bonding | `temperature`, `first_layer_temperature` |
-| 2. Flow staircase (M221) | Staircase whose every tread is printed at its own `M221` value: pass 1 sweeps 80 to 120% in 5% steps, pass 2 sweeps 1% steps around the winner (OrcaSlicer's method, rebuilt for PrusaSlicer) | Top surface of each tread | `extrusion_multiplier` (coarse) |
-| 3. Pressure advance line (recommended) | OrcaSlicer's PA Line as first-layer G-code on a small anchor plate: one line per value (slow, fast, slow runs), the value written beside it in extruded digits, `M572` / `M900` / Klipper's command per line | The line whose fast run is as wide as its slow ends | `pressure_advance_value`, mode `enabled` |
-| 3b. Pressure advance tower (alternative) | Hollow two-perimeter tower with a notch (long runs and 90° corners), perimeters forced to 120 mm/s, one PA value per band, labels on a solid spine | Corner bulge (too little) or gaps after corners (too much) | same |
-| 4. Max volumetric flow | PrusaSlicer's single-wall comb with one speed modifier per band, plus a solid label column; or a solid block | Highest band with no gaps, roughness or extruder clicking | `filament_max_volumetric_speed` |
-| 5. Solid slab (mass check) | 60 × 60 × 20 mm solid block, about 90 g, witness posts, nominal volume and expected mass engraved | Its weight on a 0.01 g scale, ridges on top, blobs on the posts | `extrusion_multiplier` (fine) |
-| 6. Infill overlap calibration | Row of solid 25 mm blocks, each under a modifier with one overlap value | Top layer where infill meets the perimeters | `infill_overlap` |
-| 7. Shrinkage and growth bar | 150 mm bar with two holes 130 mm apart, nominals engraved | Hole centre distance, width, hole diameter | scale factor, `xy_size_compensation` |
-| 8. Reference coupon | 50 × 25 × 10 mm solid body with a hole, an overhang wing on the +X end, and 0.8 / 1.2 / 1.6 mm fins on top | Dimensions, the wing's underside, whether each fin is solid | `xy_size_compensation`, `elefant_foot_compensation`, thin-wall settings |
-| 9. Stringing tower | Two pillars, temperature and optional fan steps | Stringing per band | temperature, fan limits |
-| 10. Apply dialed-in values | Nothing printed. Writes typed values into the selected presets and reads them back | The log or the helper's drawer | the presets |
+| 2. Cooling tower | Square tower with an overhang wing per band and a slender pillar the head visits every layer, `M106` on every layer of a band, the preset's fan values pinned equal so the slicer's cooling logic stays quiet | The pillar first (fused or bulging layers = too little cooling), then the wings; lowest clean fan | `min_fan_speed`, `max_fan_speed` |
+| 3. Flow staircase (M221) | Staircase whose every tread is printed at its own `M221` value: pass 1 sweeps 80 to 120% in 5% steps, pass 2 sweeps 1% steps around the winner (OrcaSlicer's method, rebuilt for PrusaSlicer) | Top surface of each tread | `extrusion_multiplier` (coarse) |
+| 4. Pressure advance line (recommended) | OrcaSlicer's PA Line as first-layer G-code on a small anchor plate: one line per value (slow, fast, slow runs), the value written beside it in extruded digits, `M572` / `M900` / Klipper's command per line | The line whose fast run is as wide as its slow ends | `pressure_advance_value`, mode `enabled` |
+| 4b. Pressure advance tower (alternative) | Hollow two-perimeter tower with a notch (long runs and 90° corners), perimeters forced to 120 mm/s, one PA value per band, labels on a solid spine | Corner bulge (too little) or gaps after corners (too much) | same |
+| 5. Max volumetric flow | PrusaSlicer's single-wall comb with one speed modifier per band, plus a solid label column; or a solid block | Highest band with no gaps, roughness or extruder clicking | `filament_max_volumetric_speed` |
+| 6. Solid slab (mass check) | 60 × 60 × 20 mm solid block, about 90 g, witness posts, nominal volume and expected mass engraved | Its weight on a 0.01 g scale, ridges on top, blobs on the posts | `extrusion_multiplier` (fine) |
+| 7. Infill overlap calibration | Row of solid 25 mm blocks, each under a modifier with one overlap value | Top layer where infill meets the perimeters | `infill_overlap` |
+| 8. Shrinkage and growth bar | 150 mm bar with two holes 130 mm apart, nominals engraved | Hole centre distance, width, hole diameter, corner lift on a flat surface | scale factor, `xy_size_compensation`; warp decides brim, bed temperature, enclosure |
+| 9. Hole and fit gauge | Solid plate: clearance holes for a 6 mm pin (+0.0 to +0.5), a 3 to 20 mm hole row, two loose pins and 4 to 10 mm pegs, all one object | First hole the pin enters freely; hole and peg errors per size | design clearances, per-size hole allowances |
+| 10. Small-feature tower | Pyramid, cone and 3/5/8 mm pillars on a plate | Height at which tips degrade | `slowdown_below_layer_time`, `min_print_speed`, fan on short layers |
+| 11. Reference coupon | 50 × 25 × 10 mm solid body with a hole, an overhang wing on the +X end, and 0.8 / 1.2 / 1.6 mm fins on top | Dimensions, the wing's underside, whether each fin is solid | `xy_size_compensation`, `elefant_foot_compensation`, thin-wall settings |
+| 12. Stringing tower | Two pillars, temperature and optional fan steps | Stringing per band | temperature, fan limits |
+| 13. Apply dialed-in values | Nothing printed. Writes typed values into the selected presets and reads them back | The log or the helper's drawer | the presets |
 | Tools / Apply values from profile.lua | Nothing printed. Writes the values the sheet saved for the selected printer | The log or the helper's drawer | the presets |
 | Tools / Periodic nozzle wipe G-code | Nothing printed. Inserts a brush-wipe routine every N mm of height | | production prints, once a brush is fitted |
 
@@ -68,30 +71,39 @@ earlier steps.
 1. **Temperature** first, because flow, bridging and stringing all move
    with it. Printed solid on Prusa's model so heat soak in thick sections
    is part of the test.
-2. **Flow, coarse then fine**, at the chosen temperature. Two passes on the
-   staircase get within 1%. Apply the result before step 3.
-3. **Pressure advance** once flow is right, because corner bulge from too
+2. **Cooling** next, at the chosen temperature, because fan changes both
+   overhang quality and layer strength and everything later prints with it.
+   The pillar shows insufficient cooling first; take the lowest clean fan.
+3. **Flow, coarse then fine**, at the chosen temperature and fan. Two passes
+   on the staircase get within 1%. Apply the result before step 4.
+4. **Pressure advance** once flow is right, because corner bulge from too
    little PA and over-extrusion look alike. The line test is the quick one
    (minutes, first layer only); the tower is there for a closer look at
    corners. PrusaSlicer 3.0 stores PA in the filament preset (mode plus
    value); Prusa firmware can also self-calibrate it, and the line test
    checks that result. The line test needs the bed centre, taken from the
    printer name for Prusa machines or typed in, and relative extrusion.
-4. **Max volumetric flow** next, because everything after it prints at the
+5. **Max volumetric flow** next, because everything after it prints at the
    new limit. Set the filament's volumetric limit and cooling slowdown to 0
    for this print (the command can write them, but see the caution below).
-5. **Slab, weighed**, at the new multiplier and limit. Mass is the precise
+6. **Slab, weighed**, at the new multiplier and limit. Mass is the precise
    flow measurement and also proves the hotend keeps up at the new speeds;
    if the slab is light, step 3 was too optimistic.
-6. **Infill overlap** only after flow is right, since overlap and
+7. **Infill overlap** only after flow is right, since overlap and
    over-extrusion look alike on a top surface. Take the lowest overlap with
    no gap beside the innermost perimeter; too much overlap is what bulges
    solid parts.
-7. **Shrinkage bar** separates thermal shrinkage from perimeter growth.
-8. **Coupon** confirms everything on a part-like object and adds the
-   overhang and thin-wall checks that a production part will meet.
-9. **Stringing** is optional and machine-specific.
-10. **Apply** and save the filament preset under the printer's name.
+8. **Shrinkage bar** separates thermal shrinkage from perimeter growth, and
+   its corner lift on a flat surface is the warp reading: not a preset value,
+   but what decides brim, bed temperature and enclosure for long solid parts.
+9. **Hole and fit gauge** turns the compensation into design rules: the
+   clearance a sliding fit needs, and how much more small holes shrink.
+10. **Small-feature tower** checks the layer-time slowdown and fan rules
+    where PETG overheats; the enclosure makes this printer-specific.
+11. **Coupon** confirms everything on a part-like object and adds the
+    overhang and thin-wall checks that a production part will meet.
+12. **Stringing** is optional and machine-specific.
+13. **Apply** and save the filament preset under the printer's name.
 
 ## Why parts differ between printers at 100% infill
 
@@ -125,20 +137,27 @@ form:
 
 1. **Temperature tower**: 260 down to 235 °C in 5 °C bands. Choose the
    coolest clean band. Apply it (step 9 or the profile).
-2. **Flow staircase** pass 1 (80 to 120% by 5) then pass 2 (winner ± 4% by
+2. **Cooling tower**: 0 to 100% in 20% bands. Lowest clean fan becomes the
+   minimum; maximum 20% above. Discard the preset changes afterwards.
+3. **Flow staircase** pass 1 (80 to 120% by 5) then pass 2 (winner ± 4% by
    1). Multiplier = current × winner / 100. Apply it. Put `M221 S100` in the
    end G-code.
-3. **Pressure advance line**: 0.00 to 0.08 in 0.005 steps. The line whose
+4. **Pressure advance line**: 0.00 to 0.08 in 0.005 steps. The line whose
    fast run matches its slow ends. Apply it (mode enabled plus the value).
-4. **Max volumetric flow** on the comb, 6 to 24 mm³/s. Limit = 85% of the
+5. **Max volumetric flow** on the comb, 6 to 24 mm³/s. Limit = 85% of the
    highest clean band. Apply it.
-5. **Slab**: weigh it. Multiplier = printed multiplier × expected g /
+6. **Slab**: weigh it. Multiplier = printed multiplier × expected g /
    measured g. Apply it.
-6. **Infill overlap**: 10 to 35% in 5% steps. Lowest value with no gap.
-7. **Bar**: shrinkage from hole centres, XY growth from width and hole.
-8. **Coupon** with everything applied; measure, judge wing and fins, keep.
-9. **Stringing** if needed.
-10. **Apply and save** the filament preset per printer.
+7. **Infill overlap**: 10 to 35% in 5% steps. Lowest value with no gap.
+8. **Bar**: shrinkage from hole centres, XY growth from width and hole,
+   corner lift on a flat surface.
+9. **Hole and fit gauge**: first hole the pin enters freely; hole and peg
+   errors per size.
+10. **Small-feature tower**: where tips degrade; set slowdown and minimum
+    speed.
+11. **Coupon** with everything applied; measure, judge wing and fins, keep.
+12. **Stringing** if needed.
+13. **Apply and save** the filament preset per printer.
 
 ### Nozzle brush
 
@@ -238,8 +257,9 @@ The sheet repeats this reminder on each step.
 - **Custom G-code is replaced.** The towers and the nozzle wipe clear the
   bed's custom G-code list before inserting their own entries (undo restores
   the old list).
-- **Presets are modified, not saved.** Command 10 and Tools › Apply change
-  the selected presets; command 4 does so only when its "write 0 into the
+- **Presets are modified, not saved.** Command 13 and Tools › Apply change
+  the selected presets; command 2 pins the filament's fan values for its
+  run (turn the option off to do it by hand) and command 5 does so only when its "write 0 into the
   preset's limits" option is on. The GUI shows them as modified. Switching
   printer or material profiles while presets are modified has crashed
   alpha11 (exit code 0xC0000409); save or discard the changes before
@@ -292,20 +312,23 @@ prusaslicer-filament-dialin/
   com.ripleydynamics.filament-dialin/   the bundle to copy into the user plugins folder
     manifest.json
     01_temp_tower.lua                1. temperature tower on Prusa's model
-    02_flow_stairs.lua               2. M221 flow staircase
-    03_pa_line.lua                   3. pressure advance line test (Orca PA Line as first-layer G-code)
-    03b_pa_tower.lua                 3b. pressure advance tower (alternative)
-    04_volumetric_tower.lua          4. max volumetric flow on Prusa's comb
-    05_slab.lua                      5. solid slab, mass check
-    06_overlap.lua                   6. infill overlap calibration
-    07_shrink_bar.lua                7. shrinkage and growth bar
-    08_coupon.lua                    8. reference coupon
-    09_stringing_tower.lua           9. stringing tower
-    10_apply_results.lua             10. write values into presets
+    02_cooling_tower.lua             2. cooling tower with heat-soak pillar
+    03_flow_stairs.lua               3. M221 flow staircase
+    04_pa_line.lua                   4. pressure advance line test (Orca PA Line as first-layer G-code)
+    04b_pa_tower.lua                 4b. pressure advance tower (alternative)
+    05_volumetric_tower.lua          5. max volumetric flow on Prusa's comb
+    06_slab.lua                      6. solid slab, mass check
+    07_overlap.lua                   7. infill overlap calibration
+    08_shrink_bar.lua                8. shrinkage and growth bar
+    09_hole_fit_gauge.lua            9. hole and fit gauge
+    10_small_feature_tower.lua       10. small-feature tower
+    11_coupon.lua                    11. reference coupon
+    12_stringing_tower.lua           12. stringing tower
+    13_apply_results.lua             13. write values into presets
     tools_apply_profile.lua          Tools: write values from profile.lua
     tools_nozzle_wipe.lua            Tools: periodic nozzle wipe G-code
     profile.lua                      (optional) written by the sheet or the helper
-    assets/prusa/                    Prusa's calibration STLs and comb SVG (AGPL-3.0, see THIRD_PARTY.md)
+    assets/prusa/                    Prusa's calibration STLs and comb SVG (AGPL-3.0) and design credits, see THIRD_PARTY.md
     lib/util.lua                     value parsing, preset readers, logging
     lib/label.lua                    engraved text on front, back and top faces
     lib/tower.lua                    stacked-section tower builder and overhang wing

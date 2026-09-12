@@ -2,7 +2,7 @@ info = {
     id = "apply_results",
     type = "project.plugin",
     title = "Apply dialed-in values to the selected presets",
-    menu = "Filament Dial-In/10. Apply dialed-in values",
+    menu = "Filament Dial-In/13. Apply dialed-in values",
     params = {
         { name = "temperature", label = "Nozzle temperature [C] (0 = keep)", type = "int", default = 0 },
         { name = "first_layer_temperature", label = "First layer temperature [C] (0 = keep)", type = "int", default = 0 },
@@ -13,6 +13,7 @@ info = {
         { name = "min_fan", label = "Min fan [%] (-1 = keep)", type = "int", default = -1 },
         { name = "max_fan", label = "Max fan [%] (-1 = keep)", type = "int", default = -1 },
         { name = "slowdown_below_layer_time", label = "Slow down below layer time [s] (-1 = keep)", type = "int", default = -1 },
+        { name = "min_print_speed", label = "Minimum print speed when slowed [mm/s] (-1 = keep)", type = "int", default = -1 },
         { name = "solid_print_preset", label = "Also set print preset to 100% rectilinear infill", type = "bool", default = false },
     },
 }
@@ -33,6 +34,7 @@ function execute(opts)
     local min_fan = util.int(opts.min_fan, "min fan", -1)
     local max_fan = util.int(opts.max_fan, "max fan", -1)
     local slowdown = util.int(opts.slowdown_below_layer_time, "slowdown below layer time", -1)
+    local minspeed = util.int(opts.min_print_speed, "minimum print speed", -1)
 
     -- Validate everything first: preset edits are not rolled back on error.
     assert(temp == 0 or (temp >= 150 and temp <= 350), "Nozzle temperature out of range")
@@ -44,6 +46,7 @@ function execute(opts)
     assert(min_fan == -1 or (min_fan >= 0 and min_fan <= 100), "Min fan must be 0-100")
     assert(max_fan == -1 or (max_fan >= 0 and max_fan <= 100), "Max fan must be 0-100")
     assert(slowdown == -1 or slowdown >= 0, "Slowdown time must be zero or positive")
+    assert(minspeed == -1 or minspeed >= 1, "Minimum print speed must be at least 1 mm/s")
 
     local changed = 0
     local function apply(box, key, value, what)
@@ -63,6 +66,7 @@ function execute(opts)
     if min_fan >= 0 then apply(material, "min_fan_speed", min_fan, "min fan speed") end
     if max_fan >= 0 then apply(material, "max_fan_speed", max_fan, "max fan speed") end
     if slowdown >= 0 then apply(material, "slowdown_below_layer_time", slowdown, "slowdown below layer time") end
+    if minspeed >= 0 then apply(material, "min_print_speed", minspeed, "minimum print speed") end
     if overlap ~= nil then
         apply(print_cfg, "infill_overlap", overlap_pct and (util.fmt(overlap, 3) .. "%") or overlap, "infill overlap")
     end

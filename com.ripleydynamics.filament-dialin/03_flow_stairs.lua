@@ -2,7 +2,7 @@ info = {
     id = "flow_tower",
     type = "project.plugin",
     title = "Flow staircase via M221: one exposed top surface per flow value",
-    menu = "Filament Dial-In/2. Flow staircase (M221)",
+    menu = "Filament Dial-In/3. Flow staircase (M221)",
     params = {
         { name = "min_flow", label = "Lowest flow [%] (bottom step)", type = "int", default = 80 },
         { name = "max_flow", label = "Highest flow [%] (top step)", type = "int", default = 120 },

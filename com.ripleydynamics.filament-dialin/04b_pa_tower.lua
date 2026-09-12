@@ -2,7 +2,7 @@ info = {
     id = "pa_tower",
     type = "project.plugin",
     title = "Pressure advance tower (corners at speed, one PA value per band)",
-    menu = "Filament Dial-In/3b. Pressure advance tower (alternative)",
+    menu = "Filament Dial-In/4b. Pressure advance tower (alternative)",
     params = {
         { name = "min_pa", label = "Lowest pressure advance (bottom), e.g. 0.00", type = "string", default = "0.00" },
         { name = "max_pa", label = "Highest pressure advance (top), e.g. 0.10", type = "string", default = "0.10" },
