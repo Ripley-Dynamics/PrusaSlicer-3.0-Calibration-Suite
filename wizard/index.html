@@ -183,6 +183,15 @@ body.has-log main{padding-bottom:42vh}
   <main id="main"></main>
 </div>
 <div class="toast" id="toast" role="status"></div>
+<dialog class="export" id="pathsDialog" aria-labelledby="pathsTitle">
+  <h2 id="pathsTitle">Paths</h2>
+  <p>Point the helper at the PrusaSlicer you are calibrating with. Both are remembered.</p>
+  <div class="fields">
+    <div class="field wide"><label for="pathPrusa">PrusaSlicer folder or executable<small>the unpacked portable zip folder is fine, e.g. C:\Users\now\Downloads\PrusaSlicer-3.0.0-alpha11\PrusaSlicer-3.0.0-alpha11</small></label><input type="text" id="pathPrusa" spellcheck="false"></div>
+    <div class="field wide"><label for="pathPlugins">Plugins folder<small>in that PrusaSlicer: Plugins › Show User Plugins Folder, then paste the path (its parent data folder also works)</small></label><input type="text" id="pathPlugins" spellcheck="false"></div>
+  </div>
+  <div class="export-actions"><button class="btn primary" id="pathsSave" type="button">Save paths</button><button class="btn" id="pathsClose" type="button">Cancel</button></div>
+</dialog>
 <dialog class="export" id="exportDialog" aria-labelledby="exportTitle">
   <h2 id="exportTitle">Export sheet</h2>
   <p>Copy this and save it as <code>petg-dialin-sheet.json</code>. Import it on another machine with Import JSON.</p>
@@ -482,18 +491,26 @@ function helperBar(){
     <span class="st">${dot(h.profile_exists)} profile.lua ${h.profile_exists?"saved":"none"}</span>
     <span class="st">${dot(h.running)} PrusaSlicer ${h.running?"running":(h.prusaslicer_exists?"ready":"not found")}</span>
     <span class="grow"></span>
+    <button class="btn small" type="button" data-helper="paths">Paths…</button>
     <button class="btn small" type="button" data-helper="install">${h.bundle_installed_version?"Update bundle":"Install bundle"}</button>
     <button class="btn small" type="button" data-helper="profile">Save profile.lua</button>
     <button class="btn small primary" type="button" data-helper="launch" ${h.running?"disabled":""}>Launch PrusaSlicer</button>
+    ${h.looks_like_2x?`<span class="st" style="flex-basis:100%;color:var(--warn)">This PrusaSlicer path does not look like a 3.0 alpha. Use Paths… to point at the alpha's folder and its plugins folder (Plugins › Show User Plugins Folder inside the alpha).</span>`:""}
   </div>`;
 }
 async function helperAction(what){
   try {
+    if (what === "paths") { openPaths(); return; }
     if (what === "install") { await api("/api/install", {}); toast("Bundle installed"); }
     else if (what === "profile") { await api("/api/profile", { lua: profileLua() }); toast("profile.lua saved into the plugin"); }
     else if (what === "launch") { await api("/api/launch", {}); toast("PrusaSlicer launched"); }
     render();
   } catch (e) { toast(e.message); render(); }
+}
+function openPaths(){
+  const dlg = $("#pathsDialog");
+  $("#pathPrusa").value = helper.prusaslicer || ""; $("#pathPlugins").value = helper.plugins_dir || "";
+  if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
 }
 function startLog(){
   const drawer = document.createElement("div"); drawer.className = "log"; drawer.id = "logDrawer";
@@ -563,6 +580,11 @@ $("#exportCopy").addEventListener("click", () => {
   else { document.execCommand("copy"); done(); }
 });
 $("#exportClose").addEventListener("click", () => { const dlg = $("#exportDialog"); dlg.close ? dlg.close() : dlg.removeAttribute("open"); });
+$("#pathsClose").addEventListener("click", () => { const dlg = $("#pathsDialog"); dlg.close ? dlg.close() : dlg.removeAttribute("open"); });
+$("#pathsSave").addEventListener("click", async () => {
+  try { await api("/api/config", { prusaslicer: $("#pathPrusa").value.trim(), plugins_dir: $("#pathPlugins").value.trim() }); toast("Paths saved"); const dlg = $("#pathsDialog"); dlg.close ? dlg.close() : dlg.removeAttribute("open"); render(); }
+  catch (e) { toast(e.message); }
+});
 $("#importFile").addEventListener("change", e => {
   const file = e.target.files[0]; if (!file) return;
   file.text().then(t => { const s = JSON.parse(t); if (!s.printers) throw new Error("no printers"); state = s; state.step = state.step || "temp"; save(); render(); toast("Imported"); }).catch(() => toast("That file is not a dial-in sheet export"));

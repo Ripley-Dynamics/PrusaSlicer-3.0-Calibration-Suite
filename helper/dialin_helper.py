@@ -78,6 +78,19 @@ def data_dir_candidates():
     return [base / n for n in names]
 
 
+def resolve_plugins_dir(path):
+    """Accepts the plugins folder itself (Plugins > Show User Plugins Folder) or
+    PrusaSlicer's user data folder, in which case the 'lua' subfolder is used."""
+    if not path:
+        return None
+    p = Path(str(path).strip().strip('"')).expanduser()
+    if p.name.lower() != "lua" and (p / "lua").is_dir():
+        return p / "lua"
+    if p.name.lower() != "lua" and p.is_dir() and (p / "PrusaSlicer.ini").exists():
+        return p / "lua"
+    return p
+
+
 def detect_plugins_dir():
     for d in data_dir_candidates():
         if d.is_dir():
@@ -140,7 +153,7 @@ def detect_prusaslicer():
 class Helper:
     def __init__(self, args):
         cfg = load_config()
-        self.plugins_dir = Path(args.plugins_dir or cfg.get("plugins_dir") or detect_plugins_dir() or "")
+        self.plugins_dir = resolve_plugins_dir(args.plugins_dir) or resolve_plugins_dir(cfg.get("plugins_dir")) or detect_plugins_dir() or Path("")
         self.prusaslicer = resolve_executable(args.prusaslicer) or resolve_executable(cfg.get("prusaslicer")) or detect_prusaslicer()
         if args.prusaslicer and not self.prusaslicer:
             print(f"warning: no PrusaSlicer executable found at {args.prusaslicer}")
@@ -177,6 +190,7 @@ class Helper:
             "prusaslicer": self.prusaslicer,
             "prusaslicer_exists": bool(self.prusaslicer) and Path(self.prusaslicer).exists(),
             "running": self.process is not None and self.process.poll() is None,
+            "looks_like_2x": bool(self.prusaslicer) and not re.search(r"3\.0|alpha|beta", self.prusaslicer, re.I),
             "events": len(self.events),
         }
 
@@ -364,10 +378,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "result": h.launch(), "status": h.status()})
             elif self.path == "/api/config":
                 b = self._body()
+                errors = []
                 if b.get("plugins_dir"):
-                    h.plugins_dir = Path(b["plugins_dir"]).expanduser()
+                    h.plugins_dir = resolve_plugins_dir(b["plugins_dir"])
                 if b.get("prusaslicer"):
-                    h.prusaslicer = resolve_executable(b["prusaslicer"]) or h.prusaslicer
+                    exe = resolve_executable(b["prusaslicer"])
+                    if exe:
+                        h.prusaslicer = exe
+                    else:
+                        errors.append(f"no PrusaSlicer executable found at {b['prusaslicer']}")
+                if errors:
+                    raise RuntimeError("; ".join(errors))
                 save_config({"plugins_dir": str(h.plugins_dir), "prusaslicer": h.prusaslicer or ""})
                 self._json({"ok": True, "status": h.status()})
             elif self.path == "/api/test-line":
