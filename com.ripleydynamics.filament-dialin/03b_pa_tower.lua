@@ -85,7 +85,7 @@ function execute(opts)
             params = { perimeter_speed = speed, external_perimeter_speed = speed, small_perimeter_speed = speed },
         }
         volumes[#volumes + 1] = label.back {
-            text = util.fmt(pa, 3), x = BODY_L / 2, z = z0 + h / 2, face_y = depth,
+            text = string.format("%.3f", pa), x = BODY_L / 2, z = z0 + h / 2, face_y = depth,
             line_height = math.min(4.5, h * 0.55), max_width = SPINE_W - 2, max_height = h - 1.5,
         }
     end

@@ -114,6 +114,9 @@ function execute(opts)
         if ch == "." then
             travel(x + DIGIT_W * 0.3, y); line(x + DIGIT_W * 0.3, y, x + DIGIT_W * 0.6, y, slow); return DIGIT_W * 0.6
         end
+        if ch == "1" then -- centred stroke instead of the seven-segment right edge
+            travel(x + DIGIT_W * 0.5, y); line(x + DIGIT_W * 0.5, y, x + DIGIT_W * 0.5, y + DIGIT_H, slow); return DIGIT_W * 0.6
+        end
         local segs = GLYPHS[ch]
         if not segs then return DIGIT_W end
         for i = 1, #segs do
@@ -131,7 +134,7 @@ function execute(opts)
         line(x0, y, x0 + SHORT, y, slow)
         line(x0 + SHORT, y, x0 + SHORT + LONG, y, fast)
         line(x0 + SHORT + LONG, y, x0 + SHORT + LONG + SHORT, y, slow)
-        local text = util.fmt(pa, 3)
+        local text = string.format("%.3f", pa)
         local x = label_x
         for c = 1, #text do
             x = x + glyph(text:sub(c, c), x, y - DIGIT_H / 2) + DIGIT_GAP

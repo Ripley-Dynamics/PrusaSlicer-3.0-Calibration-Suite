@@ -443,7 +443,7 @@ test("3b pressure advance tower", function()
         if m.params.external_perimeter_speed == 120 then speed_mods = speed_mods + 1 elseif m.params.fill_density == "100%" then solid_mods = solid_mods + 1 end
     end
     check(speed_mods == 11 and solid_mods == 2, "one speed modifier per band, solid spine and plinth: " .. speed_mods .. "/" .. solid_mods)
-    for _, v in ipairs({ "0", "0.05", "0.1", "MK4S 0.4" }) do check(has_text(obj, v), "label " .. v) end
+    for _, v in ipairs({ "0.000", "0.050", "0.100", "MK4S 0.4" }) do check(has_text(obj, v), "label " .. v) end
     local d = parse_data(data_line(mock))
     check(d.step == "pa" and d.values == "0,0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1" and d.firmware == "prusa" and d.p_pressure_advance == 0, "DATA")
     local mock2 = run_command(cmd("pa_tower"), { firmware = "klipper", by_interval = false, sections = 3, min_pa = "0.02", max_pa = "0.06" })
