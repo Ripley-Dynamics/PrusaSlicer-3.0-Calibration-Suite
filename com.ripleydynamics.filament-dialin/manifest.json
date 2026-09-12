@@ -1,0 +1,14 @@
+{
+  "id": "com.ripleydynamics.filament-dialin",
+  "name": "Filament Dial-In (100% infill)",
+  "version": "0.1.0",
+  "min_slicer_version": "3.0.0",
+  "author": "ripley-dynamics",
+  "license": "MIT",
+  "description": "Test suite for dialing in a filament and matching 100% infill parts across printers: temperature, flow, max volumetric flow, solid-infill sweeps, reference coupons, stringing, and a preset writer.",
+  "category": "Calibration",
+  "repo": "https://github.com/Ripley-Dynamics/Prusa-USA-StockChecker",
+  "required_apis": {
+    "project.plugin": "1.0.0"
+  }
+}
