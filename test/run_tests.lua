@@ -119,8 +119,8 @@ local function run_command(path, overrides, mock_opts)
     return mock, env, (not ok) and err or nil
 end
 
-local function must_fail(path, overrides, pattern)
-    local mock, _, err = run_command(path, overrides)
+local function must_fail(path, overrides, pattern, mock_opts)
+    local mock, _, err = run_command(path, overrides, mock_opts)
     check(err ~= nil, "expected failure for " .. path .. " with overrides, but it succeeded")
     if pattern then
         check(tostring(err):find(pattern, 1, true), "expected error containing '" .. pattern .. "', got: " .. tostring(err))
@@ -247,7 +247,7 @@ test("every file evaluates without api/require (discovery scan)", function()
     for _, m in ipairs(modules) do
         check(m.ok, m.path .. " failed at discovery: " .. tostring(m.err))
     end
-    check(#commands == 12, "expected 12 commands, found " .. #commands)
+    check(#commands == 13, "expected 13 commands, found " .. #commands)
 end)
 
 test("command metadata is valid for alpha11 and the menu reads 1..9 in filename order", function()
@@ -277,7 +277,9 @@ test("command metadata is valid for alpha11 and the menu reads 1..9 in filename 
             check(p.type ~= "float", f .. ": avoid float params (alpha11 rounds them); use int or string")
         end
         local num = info.menu:match("/(%d+)%. ")
-        if num then numbered[#numbered + 1] = tonumber(num) else check(info.menu:find("/Tools/", 1, true), f .. ": unnumbered command must be under Tools") end
+        if num then numbered[#numbered + 1] = tonumber(num)
+        elseif info.menu:match("/%d+b%. ") then -- alternative method, sorts right after its step
+        else check(info.menu:find("/Tools/", 1, true), f .. ": unnumbered command must be under Tools") end
     end
     -- `commands` is sorted by filename, which is the order PrusaSlicer shows
     for i, n in ipairs(numbered) do check(n == i, "menu number " .. n .. " appears at position " .. i) end
@@ -392,7 +394,39 @@ test("2 flow staircase", function()
     must_fail(cmd("flow_tower"), { min_flow = 40 }, "out of range")
 end)
 
-test("3 pressure advance tower", function()
+test("3 pressure advance line test", function()
+    local mock = run_command(cmd("pa_line"))
+    local obj = generic_checks(mock)
+    check(obj.mesh.dims.max_x == 10 and near(obj.mesh.dims.max_z, 1) and obj.object_params.fill_density == "100%", "small solid anchor plate")
+    check(#mock.bed.gcodes == 1 and near(mock.bed.gcodes[1].z, 0.1), "one entry on the first layer")
+    local g = mock.bed.gcodes[1].gcode
+    local lines = {}
+    for l in g:gmatch("[^\n]+") do lines[#lines + 1] = l end
+    local pa_cmds, fast, slow = 0, 0, 0
+    for _, l in ipairs(lines) do
+        if l:match("^M572 S") then pa_cmds = pa_cmds + 1 end
+        if l:find("F6000", 1, true) then fast = fast + 1 end
+        if l:match("^G1 .*F1200$") then slow = slow + 1 end
+    end
+    check(pa_cmds == 17, "0.00 to 0.08 by 0.005 = 17 PA commands, got " .. pa_cmds)
+    check(fast == 17, "one fast run per line, got " .. fast)
+    check(slow > 34, "two slow runs per line plus digit strokes, got " .. slow)
+    check(g:find("M572 S0\n", 1, true) and g:find("M572 S0.08\n", 1, true), "first and last values")
+    check(g:find("G0 X85 Y115 F9000", 1, true), "pattern starts left of the MK4 bed centre, above the plate")
+    check(g:find("G1 X105 Y115 E0.7269 F1200", 1, true), "20 mm slow run extrudes 0.7269 mm at 0.48 x 0.2 mm, 1.75 filament")
+    check(lines[2] == "G90" and lines[3] == "G1 E0.8 F2400" and lines[#lines - 1] == "G1 E-0.8 F2400", "unretract first, retract last")
+    check(not g:find("G92", 1, true) and not g:find("M83", 1, true), "never touches the E mode")
+    local d = parse_data(data_line(mock))
+    check(d.step == "pa" and d.method == "line" and d.bed_x == 125 and d.bed_y == 105 and d.sections == 17, "DATA")
+    local mock2 = run_command(cmd("pa_line"), { firmware = "klipper", bed_x = 100, bed_y = 100, min_pa = "0.02", max_pa = "0.06", interval = "0.02", retract = "0" }, { printer_name = "Voron 2.4" })
+    local g2 = mock2.bed.gcodes[1].gcode
+    check(g2:find("SET_PRESSURE_ADVANCE ADVANCE=0.04", 1, true) and g2:find("G0 X60 Y110 F9000", 1, true) and not g2:find("E0.8", 1, true), "klipper, explicit bed centre, no retract")
+    must_fail(cmd("pa_line"), nil, "Bed centre unknown", { printer_name = "Voron 2.4" })
+    must_fail(cmd("pa_line"), { spacing = 2 }, "Line spacing")
+    must_fail(cmd("pa_line"), { fast_speed = 10 }, "greater than slow")
+end)
+
+test("3b pressure advance tower", function()
     local mock = run_command(cmd("pa_tower"))
     local obj = generic_checks(mock)
     local g = gcode_lines(mock)
@@ -545,7 +579,7 @@ test("tools: nozzle wipe", function()
 end)
 
 test("every command prints one DATA line with the baseline", function()
-    local expected_step = { temp_tower = "temp", flow_tower = "flow", pa_tower = "pa", volumetric_tower = "vol", slab = "slab", overlap = "overlap",
+    local expected_step = { temp_tower = "temp", flow_tower = "flow", pa_line = "pa", pa_tower = "pa", volumetric_tower = "vol", slab = "slab", overlap = "overlap",
         shrink_bar = "bar", coupon = "coupon", stringing_tower = "string", apply_results = "apply" }
     for id, step in pairs(expected_step) do
         local mock = run_command(cmd(id))
@@ -581,7 +615,7 @@ end)
 
 test("every command tolerates a printer without nozzle feature", function()
     for _, f in ipairs(commands) do
-        local mock, _, err = run_command(f, nil, { no_nozzle = true, printer_name = "", modules = { profile = { ["unknown printer"] = { tag = "X", temperature = 240 } } } })
+        local mock, _, err = run_command(f, f:find("pa_line", 1, true) and { bed_x = 100, bed_y = 100 } or nil, { no_nozzle = true, printer_name = "", modules = { profile = { ["unknown printer"] = { tag = "X", temperature = 240 } } } })
         check(err == nil, f .. " failed: " .. tostring(err))
     end
 end)

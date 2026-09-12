@@ -41,7 +41,8 @@ menu follows the procedure).
 | --- | --- | --- | --- |
 | 1. Temperature tower | PrusaSlicer's own calibration model (80 × 10 mm base, 10 mm steps with bridges and overhangs), one `M104` per step, printed solid | Bridge sag, overhang fray, gloss, layer bonding | `temperature`, `first_layer_temperature` |
 | 2. Flow staircase (M221) | Staircase whose every tread is printed at its own `M221` value: pass 1 sweeps 80 to 120% in 5% steps, pass 2 sweeps 1% steps around the winner (OrcaSlicer's method, rebuilt for PrusaSlicer) | Top surface of each tread | `extrusion_multiplier` (coarse) |
-| 3. Pressure advance tower | Hollow two-perimeter tower with a notch (long runs and 90° corners), perimeters forced to 120 mm/s, one PA value per band via `M572` / `M900` / Klipper's command, labels on a solid spine | Corner bulge (too little) or gaps after corners (too much) | `pressure_advance_value`, mode `enabled` |
+| 3. Pressure advance line (recommended) | OrcaSlicer's PA Line as first-layer G-code on a small anchor plate: one line per value (slow, fast, slow runs), the value written beside it in extruded digits, `M572` / `M900` / Klipper's command per line | The line whose fast run is as wide as its slow ends | `pressure_advance_value`, mode `enabled` |
+| 3b. Pressure advance tower (alternative) | Hollow two-perimeter tower with a notch (long runs and 90° corners), perimeters forced to 120 mm/s, one PA value per band, labels on a solid spine | Corner bulge (too little) or gaps after corners (too much) | same |
 | 4. Max volumetric flow | PrusaSlicer's single-wall comb with one speed modifier per band, plus a solid label column; or a solid block | Highest band with no gaps, roughness or extruder clicking | `filament_max_volumetric_speed` |
 | 5. Solid slab (mass check) | 60 × 60 × 20 mm solid block, about 90 g, witness posts, nominal volume and expected mass engraved | Its weight on a 0.01 g scale, ridges on top, blobs on the posts | `extrusion_multiplier` (fine) |
 | 6. Infill overlap calibration | Row of solid 25 mm blocks, each under a modifier with one overlap value | Top layer where infill meets the perimeters | `infill_overlap` |
@@ -70,9 +71,12 @@ earlier steps.
 2. **Flow, coarse then fine**, at the chosen temperature. Two passes on the
    staircase get within 1%. Apply the result before step 3.
 3. **Pressure advance** once flow is right, because corner bulge from too
-   little PA and over-extrusion look alike. PrusaSlicer 3.0 stores PA in the
-   filament preset (mode plus value); Prusa firmware can also self-calibrate
-   it, and the tower checks that result.
+   little PA and over-extrusion look alike. The line test is the quick one
+   (minutes, first layer only); the tower is there for a closer look at
+   corners. PrusaSlicer 3.0 stores PA in the filament preset (mode plus
+   value); Prusa firmware can also self-calibrate it, and the line test
+   checks that result. The line test needs the bed centre, taken from the
+   printer name for Prusa machines or typed in, and relative extrusion.
 4. **Max volumetric flow** next, because everything after it prints at the
    new limit. Set the filament's volumetric limit and cooling slowdown to 0
    for this print (the command can write them, but see the caution below).
@@ -124,8 +128,8 @@ form:
 2. **Flow staircase** pass 1 (80 to 120% by 5) then pass 2 (winner ± 4% by
    1). Multiplier = current × winner / 100. Apply it. Put `M221 S100` in the
    end G-code.
-3. **Pressure advance tower**: 0.00 to 0.10 in 0.01 steps. Sharpest
-   corners without gaps. Apply it (mode enabled plus the value).
+3. **Pressure advance line**: 0.00 to 0.08 in 0.005 steps. The line whose
+   fast run matches its slow ends. Apply it (mode enabled plus the value).
 4. **Max volumetric flow** on the comb, 6 to 24 mm³/s. Limit = 85% of the
    highest clean band. Apply it.
 5. **Slab**: weigh it. Multiplier = printed multiplier × expected g /
@@ -289,7 +293,8 @@ prusaslicer-filament-dialin/
     manifest.json
     01_temp_tower.lua                1. temperature tower on Prusa's model
     02_flow_stairs.lua               2. M221 flow staircase
-    03_pa_tower.lua                  3. pressure advance tower
+    03_pa_line.lua                   3. pressure advance line test (Orca PA Line as first-layer G-code)
+    03b_pa_tower.lua                 3b. pressure advance tower (alternative)
     04_volumetric_tower.lua          4. max volumetric flow on Prusa's comb
     05_slab.lua                      5. solid slab, mass check
     06_overlap.lua                   6. infill overlap calibration
