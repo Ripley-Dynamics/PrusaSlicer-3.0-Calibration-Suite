@@ -185,10 +185,13 @@ log drawer to it:
   plugins folder (detected from the PrusaSlicer-alpha, -beta or release data
   folder; override with `--plugins-dir`). An existing `profile.lua` is kept.
 - **Save profile.lua** writes the sheet's profile straight into the bundle.
-- **Launch PrusaSlicer** starts it as a child process (path detected or set
-  with `--prusaslicer`; on Windows point it at `prusa-slicer-console.exe`,
-  the GUI executable has no console output) and streams its output into the
-  log drawer. Plugin errors, which PrusaSlicer otherwise only writes to its
+- **Launch PrusaSlicer** starts it as a child process and streams its
+  output into the log drawer. The path is detected (installed builds, and
+  portable zips unpacked in Downloads or on the Desktop) or set with
+  `--prusaslicer`, which takes the executable or the folder of a portable
+  zip. On Windows the helper runs `prusa-slicer-console.exe`; the GUI
+  executable has no console output. A portable zip still keeps its user
+  data, and therefore its plugins folder, under `%APPDATA%\PrusaSlicer-alpha`. Plugin errors, which PrusaSlicer otherwise only writes to its
   log, appear there in red.
 - Every command prints one `DATA` line with the printer name, tag and its
   numbers. The helper forwards these and the sheet acts on them: it selects

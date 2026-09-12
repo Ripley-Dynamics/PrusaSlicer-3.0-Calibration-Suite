@@ -9,8 +9,12 @@ sheet so the plugin's numbers and errors show up there.
 Standard library only. Python 3.8 or newer.
 
     python3 helper/dialin_helper.py                # auto-detect everything
-    python3 helper/dialin_helper.py --prusaslicer "C:\\Program Files\\Prusa3D\\PrusaSlicer\\prusa-slicer-console.exe"
+    python helper\\dialin_helper.py --prusaslicer "C:\\Users\\me\\Downloads\\PrusaSlicer-3.0.0-alpha11\\PrusaSlicer-3.0.0-alpha11"
     python3 helper/dialin_helper.py --plugins-dir ~/.config/PrusaSlicer-alpha/lua
+
+--prusaslicer accepts the executable or the folder it lives in (a portable
+zip unpacked anywhere). On Windows the console executable is used so the
+plugin's output can be captured.
 """
 import argparse
 import collections
@@ -81,6 +85,26 @@ def detect_plugins_dir():
     return None
 
 
+WINDOWS_EXES = ["prusa-slicer-console.exe", "prusa-slicer.exe"]
+
+
+def resolve_executable(path):
+    """Accepts an executable or a folder (portable zip) and returns the executable."""
+    if not path:
+        return None
+    p = Path(path).expanduser()
+    if p.is_dir():
+        names = WINDOWS_EXES if platform.system() == "Windows" else ["prusa-slicer", "PrusaSlicer", "PrusaSlicer.app/Contents/MacOS/PrusaSlicer"]
+        for name in names:
+            for candidate in [p / name] + sorted(p.glob(f"*/{name}"))[:5]:
+                if candidate.exists():
+                    return str(candidate)
+        return None
+    if platform.system() == "Windows" and p.name.lower() == "prusa-slicer.exe" and (p.parent / "prusa-slicer-console.exe").exists():
+        return str(p.parent / "prusa-slicer-console.exe")
+    return str(p) if p.exists() else None
+
+
 def detect_prusaslicer():
     system = platform.system()
     candidates = []
@@ -92,6 +116,10 @@ def detect_prusaslicer():
                     Path(root) / "Prusa3D" / "PrusaSlicer-alpha" / "prusa-slicer-console.exe",
                     Path(root) / "Programs" / "PrusaSlicer" / "prusa-slicer-console.exe",
                 ]
+        # Portable zips unpacked in Downloads or Desktop: newest alpha/beta folder first.
+        for base in [Path.home() / "Downloads", Path.home() / "Desktop", Path.home()]:
+            found = sorted(base.glob("PrusaSlicer*/prusa-slicer-console.exe")) + sorted(base.glob("PrusaSlicer*/*/prusa-slicer-console.exe"))
+            candidates += sorted(found, key=lambda x: str(x).lower(), reverse=True)
     elif system == "Darwin":
         for app in ["PrusaSlicer-alpha", "PrusaSlicer-beta", "PrusaSlicer"]:
             candidates += [Path("/Applications") / f"{app}.app" / "Contents" / "MacOS" / "PrusaSlicer",
@@ -113,7 +141,9 @@ class Helper:
     def __init__(self, args):
         cfg = load_config()
         self.plugins_dir = Path(args.plugins_dir or cfg.get("plugins_dir") or detect_plugins_dir() or "")
-        self.prusaslicer = args.prusaslicer or cfg.get("prusaslicer") or detect_prusaslicer()
+        self.prusaslicer = resolve_executable(args.prusaslicer) or resolve_executable(cfg.get("prusaslicer")) or detect_prusaslicer()
+        if args.prusaslicer and not self.prusaslicer:
+            print(f"warning: no PrusaSlicer executable found at {args.prusaslicer}")
         self.process = None
         self.events = collections.deque(maxlen=500)
         self.clients = []
@@ -337,7 +367,7 @@ class Handler(BaseHTTPRequestHandler):
                 if b.get("plugins_dir"):
                     h.plugins_dir = Path(b["plugins_dir"]).expanduser()
                 if b.get("prusaslicer"):
-                    h.prusaslicer = str(Path(b["prusaslicer"]).expanduser())
+                    h.prusaslicer = resolve_executable(b["prusaslicer"]) or h.prusaslicer
                 save_config({"plugins_dir": str(h.plugins_dir), "prusaslicer": h.prusaslicer or ""})
                 self._json({"ok": True, "status": h.status()})
             elif self.path == "/api/test-line":
@@ -353,7 +383,7 @@ def main():
     ap = argparse.ArgumentParser(description="Run the dial-in sheet beside PrusaSlicer.")
     ap.add_argument("--port", type=int, default=8765)
     ap.add_argument("--plugins-dir", help="PrusaSlicer user plugins folder (Plugins > Show User Plugins Folder)")
-    ap.add_argument("--prusaslicer", help="PrusaSlicer executable (Windows: prusa-slicer-console.exe)")
+    ap.add_argument("--prusaslicer", help="PrusaSlicer executable, or the folder of a portable zip")
     ap.add_argument("--no-browser", action="store_true")
     ap.add_argument("--launch", action="store_true", help="launch PrusaSlicer immediately")
     args = ap.parse_args()
