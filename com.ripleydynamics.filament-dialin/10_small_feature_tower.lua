@@ -1,5 +1,5 @@
 info = {
-    id = "small_feature_tower",
+    id = "10_small_feature_tower",
     type = "project.plugin",
     title = "Small-feature tower: pyramid, cone and thin pillars for short layer times",
     menu = "Filament Dial-In/10. Small-feature tower",

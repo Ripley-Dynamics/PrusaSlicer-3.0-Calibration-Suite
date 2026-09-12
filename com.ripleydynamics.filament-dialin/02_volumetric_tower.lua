@@ -1,5 +1,5 @@
 info = {
-    id = "volumetric_tower",
+    id = "02_volumetric_tower",
     type = "project.plugin",
     title = "Max volumetric flow: Prusa's single-wall comb, or a solid block",
     menu = "Filament Dial-In/2. Max volumetric flow",

@@ -1,5 +1,5 @@
 info = {
-    id = "apply_profile",
+    id = "90_apply_profile",
     type = "project.plugin",
     title = "Apply the dialed-in values from profile.lua",
     menu = "Filament Dial-In/Tools/Apply values from profile.lua",

@@ -1,5 +1,5 @@
 info = {
-    id = "coupon",
+    id = "11_coupon",
     type = "project.plugin",
     title = "Reference coupon: thick solid body, hole, overhang wing, thin fins",
     menu = "Filament Dial-In/11. Reference coupon",

@@ -1,5 +1,5 @@
 info = {
-    id = "shrink_bar",
+    id = "08_shrink_bar",
     type = "project.plugin",
     title = "Shrinkage and XY growth bar",
     menu = "Filament Dial-In/8. Shrinkage and growth bar",

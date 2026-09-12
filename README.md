@@ -34,8 +34,10 @@ on each machine (see the API doc's packaging page).
 
 ## The commands
 
-The Plugins menu lists them in this order (filenames are numbered so the
-menu follows the procedure).
+The Plugins menu lists them in this order. PrusaSlicer sorts commands by
+their `id` (it keeps them in a map keyed by `<bundle id>.<id>`), not by
+filename or menu label, so every command's id starts with its step number
+(`01_temp_tower`, `03a_pa_line`, ...) and the Tools entries use 90 to 92.
 
 | Menu entry | What it adds | What you read off it | What it feeds |
 | --- | --- | --- | --- |

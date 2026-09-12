@@ -1,5 +1,5 @@
 info = {
-    id = "overlap",
+    id = "07_overlap",
     type = "project.plugin",
     title = "Infill overlap calibration (row of 100% infill blocks)",
     menu = "Filament Dial-In/7. Infill overlap calibration",

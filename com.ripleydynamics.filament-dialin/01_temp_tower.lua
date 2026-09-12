@@ -1,5 +1,5 @@
 info = {
-    id = "temp_tower",
+    id = "01_temp_tower",
     type = "project.plugin",
     title = "Temperature tower (Prusa calibration model, 100% infill)",
     menu = "Filament Dial-In/1. Temperature tower",

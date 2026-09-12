@@ -1,5 +1,5 @@
 info = {
-    id = "open_sheet",
+    id = "92_open_sheet",
     type = "project.plugin",
     title = "Open the dial-in sheet in the browser (needs the helper)",
     menu = "Filament Dial-In/Tools/Open the dial-in sheet",

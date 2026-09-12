@@ -1,5 +1,5 @@
 info = {
-    id = "nozzle_clean",
+    id = "00_nozzle_clean",
     type = "project.plugin",
     title = "Nozzle clean: hot purge with cleaning filament, cold pull, reload test filament",
     menu = "Filament Dial-In/0. Nozzle clean before testing",

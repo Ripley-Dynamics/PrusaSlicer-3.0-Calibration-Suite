@@ -1,5 +1,5 @@
 info = {
-    id = "pa_line",
+    id = "03a_pa_line",
     type = "project.plugin",
     title = "Pressure advance line test (OrcaSlicer PA Line), recommended",
     menu = "Filament Dial-In/3. Pressure advance/Line test (recommended)",

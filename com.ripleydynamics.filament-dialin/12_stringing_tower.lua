@@ -1,5 +1,5 @@
 info = {
-    id = "stringing_tower",
+    id = "12_stringing_tower",
     type = "project.plugin",
     title = "Stringing tower (temperature and fan steps)",
     menu = "Filament Dial-In/12. Stringing tower",

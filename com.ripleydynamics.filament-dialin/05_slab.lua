@@ -1,5 +1,5 @@
 info = {
-    id = "slab",
+    id = "05_slab",
     type = "project.plugin",
     title = "Solid slab: mass check and endurance (100% infill)",
     menu = "Filament Dial-In/5. Solid slab (mass check)",

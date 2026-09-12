@@ -1,5 +1,5 @@
 info = {
-    id = "nozzle_wipe",
+    id = "91_nozzle_wipe",
     type = "project.plugin",
     title = "Periodic nozzle wipe on a brush (custom G-code every N mm)",
     menu = "Filament Dial-In/Tools/Periodic nozzle wipe G-code",

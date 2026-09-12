@@ -1,5 +1,5 @@
 info = {
-    id = "flow_tower",
+    id = "04_flow_tower",
     type = "project.plugin",
     title = "Flow staircase via M221: one exposed top surface per flow value",
     menu = "Filament Dial-In/4. Flow staircase (M221)",

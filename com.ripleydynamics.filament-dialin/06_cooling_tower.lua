@@ -1,5 +1,5 @@
 info = {
-    id = "cooling_tower",
+    id = "06_cooling_tower",
     type = "project.plugin",
     title = "Cooling tower: fan per band, overhang wings and a heat-soak pillar",
     menu = "Filament Dial-In/6. Cooling tower",

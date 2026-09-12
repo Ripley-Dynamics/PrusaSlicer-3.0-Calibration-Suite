@@ -1,5 +1,5 @@
 info = {
-    id = "pa_tower",
+    id = "03b_pa_tower",
     type = "project.plugin",
     title = "Pressure advance tower (corners at speed, one PA value per band)",
     menu = "Filament Dial-In/3. Pressure advance/Tower (alternative)",

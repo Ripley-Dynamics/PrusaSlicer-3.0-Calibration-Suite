@@ -1,5 +1,5 @@
 info = {
-    id = "hole_fit_gauge",
+    id = "09_hole_fit_gauge",
     type = "project.plugin",
     title = "Hole and fit gauge: hole sizes, pegs, and clearance holes with a pin",
     menu = "Filament Dial-In/9. Hole and fit gauge",

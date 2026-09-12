@@ -1,5 +1,5 @@
 info = {
-    id = "apply_results",
+    id = "13_apply_results",
     type = "project.plugin",
     title = "Apply dialed-in values to the selected presets",
     menu = "Filament Dial-In/13. Apply dialed-in values",
