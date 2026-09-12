@@ -1,0 +1,443 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PETG Dial-In Sheet</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+:root{
+  --paper:#F1F3F1; --sheet:#FBFBFA; --rail:#E6E9E7; --line:#CBD1CD; --line-soft:#DDE2DF;
+  --ink:#1B2320; --ink-2:#4B5651; --ink-3:#7A857F;
+  --accent:#D9581F; --accent-ink:#FFFFFF; --accent-soft:#F8E4D8;
+  --good:#2F7D4F; --good-soft:#DDEFE3; --warn:#A87413; --warn-soft:#F6EBD0; --bad:#B03A2E; --bad-soft:#F5DCD8;
+  --focus:#1F6FB2;
+  --display:"Barlow Condensed","Arial Narrow",Impact,sans-serif;
+  --body:"IBM Plex Sans","Helvetica Neue",Arial,sans-serif;
+  --mono:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#151A18; --sheet:#1D2422; --rail:#101513; --line:#3A4441; --line-soft:#2C3532;
+    --ink:#E7ECE8; --ink-2:#AEB8B2; --ink-3:#7D8883;
+    --accent:#EE7A3F; --accent-ink:#14100D; --accent-soft:#3A2418;
+    --good:#6CC08B; --good-soft:#1E3327; --warn:#E0B24F; --warn-soft:#3A2F12; --bad:#E5776B; --bad-soft:#3D1F1B;
+    --focus:#6FB2F0;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#151A18; --sheet:#1D2422; --rail:#101513; --line:#3A4441; --line-soft:#2C3532;
+  --ink:#E7ECE8; --ink-2:#AEB8B2; --ink-3:#7D8883;
+  --accent:#EE7A3F; --accent-ink:#14100D; --accent-soft:#3A2418;
+  --good:#6CC08B; --good-soft:#1E3327; --warn:#E0B24F; --warn-soft:#3A2F12; --bad:#E5776B; --bad-soft:#3D1F1B;
+  --focus:#6FB2F0;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+a{color:var(--accent)}
+.app{display:grid;grid-template-columns:272px minmax(0,1fr);min-height:100vh}
+.rail{background:var(--rail);border-right:1px solid var(--line);padding:20px 16px 28px;display:flex;flex-direction:column;gap:22px}
+.brand{font-family:var(--display);font-weight:700;font-size:26px;letter-spacing:.01em;line-height:1;text-transform:uppercase}
+.brand small{display:block;font-family:var(--body);font-weight:500;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin-top:6px}
+.eyebrow{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin:0 0 8px}
+.printer-list{display:flex;flex-direction:column;gap:4px}
+.printer-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:6px;padding:8px 10px;cursor:pointer}
+.printer-btn:hover{background:var(--sheet)}
+.printer-btn[aria-current="true"]{background:var(--sheet);border-color:var(--line)}
+.printer-btn .tag{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+.steps{display:flex;flex-direction:column;gap:2px}
+.step-btn{display:grid;grid-template-columns:28px 1fr auto;align-items:center;gap:10px;width:100%;text-align:left;background:transparent;border:1px solid transparent;border-radius:6px;padding:7px 8px;cursor:pointer;color:var(--ink-2)}
+.step-btn:hover{background:var(--sheet)}
+.step-btn[aria-current="true"]{background:var(--sheet);border-color:var(--line);color:var(--ink)}
+.step-btn .num{font-family:var(--display);font-weight:600;font-size:20px;line-height:1;color:var(--ink-3)}
+.step-btn[aria-current="true"] .num{color:var(--accent)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--line);flex:none}
+.dot.done{background:var(--good)}
+.dot.partial{background:var(--warn)}
+.rail-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:auto}
+.btn{background:var(--sheet);border:1px solid var(--line);border-radius:6px;padding:7px 12px;cursor:pointer;font-weight:500;font-size:13px}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.small{padding:4px 9px;font-size:12px}
+.btn.danger{color:var(--bad)}
+main{padding:28px 32px 64px;max-width:1040px;width:100%}
+.sheet-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:22px}
+.sheet-head h1{font-family:var(--display);font-weight:700;font-size:44px;line-height:.95;margin:0;text-transform:uppercase;text-wrap:balance}
+.sheet-head h1 .n{color:var(--accent);margin-right:10px}
+.sheet-head .who{font-family:var(--mono);font-size:13px;color:var(--ink-2);text-align:right}
+.sheet-head .who b{color:var(--ink);font-weight:500}
+.purpose{max-width:66ch;color:var(--ink-2);margin:0 0 22px;font-size:15.5px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start}
+.block{background:var(--sheet);border:1px solid var(--line-soft);border-radius:8px;padding:16px 18px 18px}
+.block h2{font-family:var(--display);font-weight:600;font-size:22px;letter-spacing:.02em;text-transform:uppercase;margin:0 0 10px;display:flex;align-items:baseline;gap:10px}
+.block h2 .k{font-family:var(--body);font-size:11px;font-weight:600;letter-spacing:.1em;color:var(--ink-3)}
+.bed{background:var(--accent-soft);border-left:3px solid var(--accent);padding:8px 12px;border-radius:0 6px 6px 0;font-size:13.5px;margin:0 0 12px}
+.cmd{font-family:var(--mono);font-size:13px;background:var(--paper);border:1px solid var(--line-soft);border-radius:6px;padding:8px 10px;margin:0 0 12px;word-break:break-word}
+table.vals{width:100%;border-collapse:collapse;font-size:13.5px}
+table.vals td{padding:5px 0;border-bottom:1px solid var(--line-soft);vertical-align:top}
+table.vals td:last-child{text-align:right;font-family:var(--mono);white-space:nowrap;padding-left:12px}
+table.vals tr:last-child td{border-bottom:0}
+.look{margin:12px 0 0;padding-left:18px;font-size:14px;color:var(--ink-2)}
+.look li{margin:4px 0}
+.fields{display:grid;grid-template-columns:1fr;gap:10px}
+.field{display:grid;grid-template-columns:minmax(0,1fr) 150px;align-items:center;gap:12px}
+.field label{font-size:13.5px}
+.field label small{display:block;color:var(--ink-3);font-size:12px}
+.field .in{display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.field input[type=number],.field input[type=text],.field select{width:100%;max-width:150px;padding:6px 8px;border:1px solid var(--line);border-radius:5px;background:var(--paper);font-family:var(--mono);font-size:13.5px;text-align:right}
+.field input[type=text]{font-family:var(--body);text-align:left}
+.field .unit{font-family:var(--mono);font-size:12px;color:var(--ink-3);min-width:34px}
+.field.wide{grid-template-columns:1fr}
+.field.wide input[type=text]{max-width:none}
+.results{display:flex;flex-direction:column;gap:8px}
+.res{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line-soft)}
+.res:last-child{border-bottom:0}
+.res .l{font-size:13.5px}
+.res .l small{display:block;color:var(--ink-3);font-size:12px}
+.res .v{font-family:var(--mono);font-size:18px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap}
+.res .v.big{font-size:26px;color:var(--accent)}
+.res .v.muted{color:var(--ink-3);font-size:14px}
+.pill{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:999px;background:var(--line-soft);color:var(--ink-2);vertical-align:middle}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.done-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line)}
+.done-row label{display:flex;align-items:center;gap:10px;font-weight:500;cursor:pointer}
+.done-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--accent)}
+.nav{display:flex;gap:8px}
+.summary-text{font-family:var(--mono);font-size:13px;white-space:pre-wrap;background:var(--paper);border:1px solid var(--line-soft);border-radius:6px;padding:12px;margin:0}
+.compare{overflow-x:auto}
+.compare table{border-collapse:collapse;font-size:13px;min-width:640px;width:100%}
+.compare th,.compare td{padding:7px 10px;border-bottom:1px solid var(--line-soft);text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.compare th{font-family:var(--body);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);font-weight:600}
+.compare th:first-child,.compare td:first-child{text-align:left;font-family:var(--body)}
+.printer-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.printer-form .field{grid-template-columns:1fr}
+.printer-form .field input{max-width:none;text-align:left}
+.note{font-size:13px;color:var(--ink-3);margin:10px 0 0}
+.example-flag{font-size:12px;color:var(--warn);font-weight:500}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:8px 14px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+@media (prefers-reduced-motion: reduce){.toast{transition:none}}
+.rail-toggle{display:none}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  .rail{border-right:0;border-bottom:1px solid var(--line);padding:16px}
+  .rail.collapsed .steps,.rail.collapsed .printer-list,.rail.collapsed .rail-actions,.rail.collapsed .eyebrow{display:none}
+  .rail-toggle{display:inline-block}
+  main{padding:20px 16px 48px}
+  .sheet-head h1{font-size:34px}
+  .field{grid-template-columns:1fr}
+  .field .in{justify-content:flex-start}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="rail" id="rail">
+    <div class="brand">PETG Dial-In Sheet<small>PrusaSlicer 3.0 calibration suite</small> <button class="btn small rail-toggle" id="railToggle" type="button">Menu</button></div>
+    <div>
+      <p class="eyebrow">Printers</p>
+      <div class="printer-list" id="printerList"></div>
+      <div class="rail-actions" style="margin-top:8px"><button class="btn small" id="addPrinter" type="button">Add printer</button></div>
+    </div>
+    <div>
+      <p class="eyebrow">Steps</p>
+      <div class="steps" id="stepList"></div>
+    </div>
+    <div class="rail-actions">
+      <button class="btn small" id="exportBtn" type="button">Export JSON</button>
+      <label class="btn small" for="importFile" style="cursor:pointer">Import JSON</label>
+      <input type="file" id="importFile" accept="application/json" hidden>
+      <button class="btn small danger" id="resetBtn" type="button">Clear all</button>
+    </div>
+  </aside>
+  <main id="main"></main>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+(function(){
+"use strict";
+const KEY = "petg-dialin-sheet-v1";
+
+// ---------- state ----------
+function examplePrinter(){
+  return {
+    id: "ex1", name: "Original Prusa MK4S 0.4 nozzle", tag: "MK4S 0.4", example: true,
+    filament: "Prusament PETG Jet Black", density: 1.27, baseMultiplier: 1.0, nozzle: 0.4, layer: 0.2,
+    steps: {
+      temp: { chosen: 245, notes: "Gloss even from 250 down; 240 wing started to fray", done: true },
+      flow: { chosen: 98, done: true },
+      vol:  { clean: 18, done: true },
+      sweep:{ chosen: 15, done: true },
+      slab: { x: 60, y: 60, z: 20, posts: true, measured: 94.10, done: true },
+      bar:  { c0: 130, w0: 20, d0: 6, near: 123.55, far: 135.50, w: 20.09, d: 5.86, done: true },
+      coupon:{ l: 49.97, w: 24.98, h: 10.02, hole: 9.94, foot: 0.15, done: false },
+      string:{ temp: 245, fan: 30, done: false },
+      apply:{ done: false }
+    }
+  };
+}
+function blankPrinter(name, tag){
+  return { id: "p" + Date.now().toString(36), name, tag, example: false, filament: "Prusament PETG", density: 1.27,
+    baseMultiplier: 1.0, nozzle: 0.4, layer: 0.2, steps: {} };
+}
+let state = load();
+function load(){
+  try { const s = JSON.parse(localStorage.getItem(KEY)); if (s && s.printers && s.printers.length) return s; } catch(e){}
+  return { printers: [examplePrinter()], active: "ex1", step: "temp" };
+}
+function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
+function printer(){ return state.printers.find(p => p.id === state.active) || state.printers[0]; }
+function sd(p, id){ p.steps[id] = p.steps[id] || {}; return p.steps[id]; }
+
+// ---------- arithmetic ----------
+const num = v => (v === "" || v === null || v === undefined || isNaN(+v)) ? null : +v;
+const f = (v, d) => v === null || v === undefined || !isFinite(v) ? "—" : (+v).toFixed(d);
+function extrusionArea(w, h){ return (w - h) * h + Math.PI * (h / 2) ** 2; }
+function multiplierAfterFlow(p){ const c = num(sd(p,"flow").chosen); return c ? p.baseMultiplier * c / 100 : p.baseMultiplier; }
+function slabNominal(p){
+  const s = sd(p,"slab"); const x = num(s.x) ?? 60, y = num(s.y) ?? 60, z = num(s.z) ?? 20;
+  let mm3 = x * y * z; if (s.posts !== false) mm3 += 4 * 6 * 6 * 12;
+  return { cm3: mm3 / 1000, g: mm3 / 1000 * (num(p.density) ?? 1.27) };
+}
+function multiplierAfterSlab(p){
+  const m = num(sd(p,"slab").measured); const n = slabNominal(p);
+  return m ? multiplierAfterFlow(p) * n.g / m : null;
+}
+function finalMultiplier(p){ return multiplierAfterSlab(p) ?? (num(sd(p,"flow").chosen) ? multiplierAfterFlow(p) : null); }
+function barResult(p){
+  const b = sd(p,"bar"); const c0 = num(b.c0) ?? 130, w0 = num(b.w0) ?? 20, d0 = num(b.d0) ?? 6;
+  const near = num(b.near), far = num(b.far), w = num(b.w), d = num(b.d);
+  const c = (near !== null && far !== null) ? (near + far) / 2 : null;
+  const s = c !== null ? 1 - c / c0 : null;
+  const gW = (w !== null && s !== null) ? (w - w0 * (1 - s)) / 2 : (w !== null ? (w - w0) / 2 : null);
+  const gD = (d !== null && s !== null) ? (d0 * (1 - s) - d) / 2 : (d !== null ? (d0 - d) / 2 : null);
+  const g = gW !== null && gD !== null ? (gW + gD) / 2 : (gW ?? gD);
+  return { c, s, gW, gD, g, scale: s !== null ? 1 / (1 - s) : null };
+}
+function volLimit(p){ const c = num(sd(p,"vol").clean); return c ? c * 0.85 : null; }
+
+// ---------- steps ----------
+const STEPS = [
+  { id:"temp", n:1, name:"Temperature tower", cmd:"1. Temperature tower",
+    purpose:"Find the coolest temperature that still bonds layers and holds an overhang. Thick solid parts stay warm between layers, so lean toward the cool end of what looks good.",
+    run:p=>[["Bottom section temperature","260"],["Temperature drop per section","5"],["Number of sections","6"],["Section height","10"],["Print at 100% infill","on"],["Add overhang wings","on"],["Printer tag",p.tag]],
+    look:["Bands are engraved with their temperature on the front; hottest at the bottom.","Reject bands with frayed overhang wings, dull matte surface (too cool) or drooping corners and glassy blobs (too hot).","Snap the tower at a band boundary: the coolest band that does not break cleanly is your floor."],
+    fields:[{k:"chosen",label:"Chosen temperature",unit:"°C",type:"number",step:1},{k:"notes",label:"Notes",type:"text",wide:true}],
+    result:p=>{const t=num(sd(p,"temp").chosen);return[
+      {l:"Nozzle temperature",v:t?f(t,0)+" °C":"—",big:!!t},
+      {l:"First layer temperature",s:"Prusa's PETG profile runs the first layer 10 °C cooler",v:t?f(t-10,0)+" °C":"—"}];}},
+  { id:"flow", n:2, name:"Flow tower (M221)", cmd:"2. Flow tower (M221)",
+    purpose:"Get the extrusion multiplier into the right neighbourhood with a coarse M221 sweep at 100% infill. The slab in step 5 refines it by weight.",
+    run:p=>[["Bottom section flow","104"],["Flow drop per section","2"],["Number of sections","7"],["Section height","10"],["Printer tag",p.tag]],
+    look:["Look at the top of each band with a raking light: ridges and a shiny scalloped surface mean too much flow, pinholes between lines mean too little.","Measure each band: nominal 30.00 × 16.00 mm. Over-extruded bands grow.","Pick the highest flow that is still flat. Add M221 S100 to the printer's end G-code; M221 persists on the machine."],
+    fields:[{k:"chosen",label:"Chosen flow",unit:"%",type:"number",step:1},{k:"width",label:"Width of that band (X)",unit:"mm",type:"number",step:0.01},{k:"depth",label:"Depth of that band (Y)",unit:"mm",type:"number",step:0.01}],
+    result:p=>{const d=sd(p,"flow");const m=num(d.chosen)?multiplierAfterFlow(p):null;const w=num(d.width),dp=num(d.depth);return[
+      {l:"Extrusion multiplier after this step",s:"current "+f(p.baseMultiplier,4)+" × chosen % / 100",v:m?f(m,4):"—",big:!!m},
+      {l:"XY growth per side at that band",s:"from width and depth against 30 × 16 mm",v:(w!==null||dp!==null)?f(((w!==null?w-30:0)+(dp!==null?dp-16:0))/((w!==null?1:0)+(dp!==null?1:0))/2,3)+" mm":"—",muted:true}];}},
+  { id:"vol", n:3, name:"Max volumetric flow", cmd:"3. Max volumetric flow tower",
+    purpose:"Find how fast this hotend can actually melt PETG. Solid infill on a fast printer under-extrudes silently when the limit is too high, and the part loses mass and strength.",
+    run:p=>[["Bottom section flow","6"],["Top section flow","24"],["Number of sections","7"],["Section height","10"],["Extrusion width","(blank)"],["Set preset limits to unlimited","on"],["Printer tag",p.tag]],
+    look:["The command lifts the filament's volumetric limit and layer-time slowdown for this print only; the presets show as modified afterwards.","Bands are labelled in mm³/s. Look for the first band with gaps between infill lines, a rough matte surface, or extruder clicking.","Take the highest clean band."],
+    fields:[{k:"clean",label:"Highest clean band",unit:"mm³/s",type:"number",step:0.5}],
+    result:p=>{const l=volLimit(p);return[
+      {l:"Filament max volumetric speed",s:"85% of the highest clean band",v:l?f(l,1)+" mm³/s":"—",big:!!l},
+      {l:"Equivalent solid-infill speed",s:"at "+f(p.nozzle*1.125,3)+" × "+f(p.layer,2)+" mm lines",v:l?f(l/extrusionArea(p.nozzle*1.125,p.layer),0)+" mm/s":"—",muted:true}];}},
+  { id:"sweep", n:4, name:"Setting sweep plate", cmd:"4. Setting sweep plate",
+    purpose:"Set the overlap between perimeters and solid infill. Too little leaves a gap line on the top surface; too much is what makes 100% infill parts bulge and grow.",
+    run:p=>[["Setting key","infill_overlap"],["First value","10%"],["Step between blocks","5%"],["Number of blocks","6"],["Block size","25"],["Block height","8"],["Printer tag",p.tag]],
+    look:["Each block carries its value on the front; the swept key is on the back of the second block.","Take the lowest overlap with no visible gap between the outer perimeter loops and the infill on the top surface.","Worth running once more with solid_infill_extrusion_width from 0.4 step 0.05 if the top still shows ridges at the right mass."],
+    fields:[{k:"chosen",label:"Chosen infill overlap",unit:"%",type:"number",step:1},{k:"notes",label:"Other sweeps run",type:"text",wide:true}],
+    result:p=>{const c=num(sd(p,"sweep").chosen);return[{l:"Infill/perimeter overlap",v:c?f(c,0)+" %":"—",big:!!c}];}},
+  { id:"slab", n:5, name:"Solid slab, weighed", cmd:"5. Solid slab (mass check, endurance)",
+    purpose:"The precise flow test. A solid block of known volume weighed on a 0.01 g scale gives volumetric over-extrusion to about 0.1%, which is the small excess that piles up on the nozzle and drops as blobs over a long print.",
+    run:p=>{const s=sd(p,"slab");return[["Size X",String(num(s.x)??60)],["Size Y",String(num(s.y)??60)],["Height Z",String(num(s.z)??20)],["Add four witness posts",s.posts===false?"off":"on"],["Filament density","(blank, from preset)"],["Printer tag",p.tag]]},
+    look:["Print it with the multiplier from step 2 applied. Let it cool fully, brush off any strings, then weigh it.","Ridges on the top at the right mass point back to step 4; blobs on the posts or edges usually clear once the mass is right.","Bigger is better for precision and for endurance: 100 × 100 × 40 mm is about 500 g and runs as long as a production part."],
+    fields:[{k:"x",label:"Size X",unit:"mm",type:"number",step:1,ph:"60"},{k:"y",label:"Size Y",unit:"mm",type:"number",step:1,ph:"60"},{k:"z",label:"Height Z",unit:"mm",type:"number",step:1,ph:"20"},{k:"posts",label:"Witness posts printed",type:"select",opts:[["true","yes"],["false","no"]]},{k:"measured",label:"Measured mass",unit:"g",type:"number",step:0.01}],
+    result:p=>{const n=slabNominal(p);const m=num(sd(p,"slab").measured);const after=multiplierAfterSlab(p);const err=m?(m/n.g-1)*100:null;return[
+      {l:"Nominal volume",s:"as engraved on the front",v:f(n.cm3,2)+" cm³",muted:true},
+      {l:"Expected mass",s:"at "+f(p.density,3)+" g/cm³, labels cost under 0.1 g",v:f(n.g,2)+" g"},
+      {l:"Over-extrusion",s:"measured / expected − 1",v:err!==null?(err>0?"+":"")+f(err,2)+" %":"—",pill:err===null?null:Math.abs(err)<0.3?["good","within 0.3%"]:Math.abs(err)<1?["warn","adjust"]:["bad","adjust and reprint"]},
+      {l:"Extrusion multiplier after this step",s:f(multiplierAfterFlow(p),4)+" × expected / measured",v:after?f(after,4):"—",big:!!after}];}},
+  { id:"bar", n:6, name:"Shrinkage and growth bar", cmd:"6. Shrinkage and growth bar",
+    purpose:"Separate thermal shrinkage from perimeter growth. PETG shrinks about 0.3 to 0.6% on cooling, so a 150 mm part comes out short while a 20 mm coupon looks fine. Hole centre distance ignores growth; width and hole diameter isolate it.",
+    run:p=>[["Bar length X","150"],["Bar width Y","20"],["Bar height Z","8"],["Hole diameter","6"],["Hole centre distance from each end","10"],["Printer tag",p.tag]],
+    look:["Measure the gap between the holes' near edges and between their far edges; their average is the centre distance and the growth cancels.","Measure the bar width and one hole diameter away from the first layer.","The nominals are engraved on the front as C, W and D."],
+    fields:[{k:"c0",label:"Nominal centre distance C0",unit:"mm",type:"number",step:0.01,ph:"130"},{k:"w0",label:"Nominal width W0",unit:"mm",type:"number",step:0.01,ph:"20"},{k:"d0",label:"Nominal hole D0",unit:"mm",type:"number",step:0.01,ph:"6"},{k:"near",label:"Near-edge gap between holes",unit:"mm",type:"number",step:0.01},{k:"far",label:"Far-edge gap between holes",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"d",label:"Measured hole diameter",unit:"mm",type:"number",step:0.01}],
+    result:p=>{const r=barResult(p);return[
+      {l:"Centre distance C",s:"(near + far) / 2",v:r.c!==null?f(r.c,3)+" mm":"—",muted:true},
+      {l:"Thermal shrinkage",s:"1 − C / C0",v:r.s!==null?f(r.s*100,3)+" %":"—",big:r.s!==null},
+      {l:"Scale factor for production models",s:"1 / (1 − shrinkage), each axis",v:r.scale!==null?f(r.scale,4):"—"},
+      {l:"XY growth per side",s:"from width "+(r.gW!==null?f(r.gW,3):"—")+", from hole "+(r.gD!==null?f(r.gD,3):"—"),v:r.g!==null?f(r.g,3)+" mm":"—",big:r.g!==null},
+      {l:"XY size compensation to set",s:"the negative of the growth",v:r.g!==null?f(-r.g,3)+" mm":"—"}];}},
+  { id:"coupon", n:7, name:"Reference coupon", cmd:"7. Reference coupon (100% infill)",
+    purpose:"One coupon per printer with everything applied, to confirm the numbers and to keep. Compare coupons from different machines side by side; the tag and note are engraved.",
+    run:p=>{const r=barResult(p);return[["Length X","50"],["Width Y","25"],["Height Z","10"],["Through-hole diameter","10"],["Perimeters","2"],["XY size compensation",r.g!==null?f(-r.g,3):"(blank)"],["Elephant foot compensation",String(num(sd(p,"coupon").foot)??"0.2")],["Printer tag",p.tag],["Note","spool and date"]]},
+    look:["Measure length, width, height and the hole. Deviations should now be within caliper noise, apart from shrinkage on the 50 mm length (about 0.2 mm at 0.4%).","A flared first layer means more elephant foot compensation; a pinched one means less."],
+    fields:[{k:"l",label:"Measured length",unit:"mm",type:"number",step:0.01},{k:"w",label:"Measured width",unit:"mm",type:"number",step:0.01},{k:"h",label:"Measured height",unit:"mm",type:"number",step:0.01},{k:"hole",label:"Measured hole",unit:"mm",type:"number",step:0.01},{k:"foot",label:"Elephant foot compensation used",unit:"mm",type:"number",step:0.01}],
+    result:p=>{const c=sd(p,"coupon");const r=barResult(p);const sc=r.s!==null?1-r.s:1;const rows=[["Length",num(c.l),50*sc],["Width",num(c.w),25*sc],["Height",num(c.h),10],["Hole",num(c.hole),10*sc]];return rows.map(([l,m,n])=>{const d=m!==null?m-n:null;return{l,s:"expected "+f(n,2)+" mm after shrinkage",v:d!==null?(d>0?"+":"")+f(d,3)+" mm":"—",pill:d===null?null:Math.abs(d)<=0.05?["good","ok"]:Math.abs(d)<=0.12?["warn","check"]:["bad","off"]};});}},
+  { id:"string", n:8, name:"Stringing tower", cmd:"8. Stringing tower",
+    purpose:"Optional. Only needed when retraction or fan behaviour differs between machines. Keep the filament's fan settings constant while sweeping fan.",
+    run:p=>[["Bottom section temperature",String(num(sd(p,"temp").chosen)??250)],["Temperature drop per section","5"],["Bottom section fan","-1 (leave to slicer)"],["Fan increase per section","0"],["Number of sections","6"],["Printer tag",p.tag]],
+    look:["Strings between the pillars at the chosen temperature mean the retraction needs work on that machine, not the filament.","If you sweep fan, the right pillar is labelled with the fan percentage."],
+    fields:[{k:"temp",label:"Temperature with least stringing",unit:"°C",type:"number",step:1},{k:"fan",label:"Fan chosen",unit:"%",type:"number",step:5},{k:"notes",label:"Notes",type:"text",wide:true}],
+    result:p=>{const s=sd(p,"string");return[{l:"Stringing note",v:num(s.temp)?f(s.temp,0)+" °C / "+(num(s.fan)!==null?f(s.fan,0)+" % fan":"fan as slicer"):"—"}];}},
+  { id:"apply", n:9, name:"Apply and save preset", cmd:"9. Apply dialed-in values",
+    purpose:"Type these into the Apply dialog, then save the filament preset under this printer's name and select it in that printer's profile. Nothing is saved until you save the preset.",
+    run:p=>{const t=num(sd(p,"temp").chosen);const m=finalMultiplier(p);const v=volLimit(p);const o=num(sd(p,"sweep").chosen);return[["Nozzle temperature",t?f(t,0):"0 (keep)"],["First layer temperature",t?f(t-10,0):"0 (keep)"],["Extrusion multiplier",m?f(m,4):"(blank)"],["Filament max volumetric speed",v?f(v,1):"(blank)"],["Infill/perimeter overlap",o?f(o,0)+"%":"(blank)"],["Also set print preset to 100% rectilinear","on"]]},
+    look:["XY size compensation and elephant foot are per-object settings in PrusaSlicer, not preset values; put them in the print preset's Advanced page or on each object.","Scale production models by the factor from step 6 if the parts are large enough to care."],
+    fields:[{k:"presetName",label:"Saved filament preset name",type:"text",wide:true,ph:"Prusament PETG - "+"printer"}],
+    result:null }
+];
+
+// ---------- render ----------
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function stepStatus(p, st){
+  const d = p.steps[st.id]; if (!d) return "";
+  if (d.done) return "done";
+  return Object.keys(d).some(k => k !== "done" && d[k] !== "" && d[k] !== null && d[k] !== undefined) ? "partial" : "";
+}
+function renderRail(){
+  const p = printer();
+  $("#printerList").innerHTML = state.printers.map(x => `<button class="printer-btn" type="button" data-printer="${x.id}" aria-current="${x.id===p.id}"><span>${esc(x.name)}${x.example?' <span class="example-flag">example</span>':''}</span><span class="tag">${esc(x.tag)}</span></button>`).join("");
+  const items = STEPS.map(st => `<button class="step-btn" type="button" data-step="${st.id}" aria-current="${state.step===st.id}"><span class="num">${st.n}</span><span>${esc(st.name)}</span><span class="dot ${stepStatus(p,st)}"></span></button>`);
+  items.push(`<button class="step-btn" type="button" data-step="printer" aria-current="${state.step==="printer"}"><span class="num">·</span><span>Printer details</span><span class="dot"></span></button>`);
+  items.push(`<button class="step-btn" type="button" data-step="compare" aria-current="${state.step==="compare"}"><span class="num">≡</span><span>Compare printers</span><span class="dot"></span></button>`);
+  $("#stepList").innerHTML = items.join("");
+}
+function fieldHtml(st, d, fl){
+  const id = `f-${st.id}-${fl.k}`; const v = d[fl.k] ?? "";
+  let input;
+  if (fl.type === "select") input = `<select id="${id}" data-field="${fl.k}">${fl.opts.map(([ov,ol])=>`<option value="${ov}" ${String(v===""?"true":v)===ov?"selected":""}>${ol}</option>`).join("")}</select>`;
+  else if (fl.type === "text") input = `<input type="text" id="${id}" data-field="${fl.k}" value="${esc(v)}" placeholder="${esc(fl.ph||"")}">`;
+  else input = `<input type="number" id="${id}" data-field="${fl.k}" value="${esc(v)}" step="${fl.step||1}" inputmode="decimal" placeholder="${esc(fl.ph||"")}">`;
+  return `<div class="field ${fl.wide?"wide":""}"><label for="${id}">${esc(fl.label)}</label><div class="in">${input}${fl.unit?`<span class="unit">${fl.unit}</span>`:""}</div></div>`;
+}
+function resultsHtml(st, p){
+  if (!st.result) return "";
+  return st.result(p).map(r => `<div class="res"><div class="l">${esc(r.l)}${r.s?`<small>${esc(r.s)}</small>`:""}</div><div class="v ${r.big?"big":""} ${r.muted?"muted":""}">${esc(r.v)}${r.pill?` <span class="pill ${r.pill[0]}">${r.pill[1]}</span>`:""}</div></div>`).join("");
+}
+function renderStep(st){
+  const p = printer(); const d = sd(p, st.id);
+  const idx = STEPS.indexOf(st);
+  const prev = STEPS[idx-1], next = STEPS[idx+1];
+  const beds = st.id === "apply" ? "" : `<p class="bed">Bed: add a new build plate in PrusaSlicer (the + next to the bed tabs) and select it before running. Each tower keeps its own per-layer G-code on its bed.</p>`;
+  $("#main").innerHTML = `
+    <div class="sheet-head"><h1><span class="n">${st.n}</span>${esc(st.name)}</h1><div class="who"><b>${esc(p.name)}</b><br>${esc(p.tag)} · ${esc(p.filament)} · current multiplier ${f(p.baseMultiplier,4)}</div></div>
+    <p class="purpose">${esc(st.purpose)}</p>
+    <div class="grid">
+      <section class="block"><h2><span class="k">A</span>Run in PrusaSlicer</h2>${beds}<div class="cmd">Plugins › Filament Dial-In › ${esc(st.cmd)}</div><table class="vals">${st.run(p).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join("")}</table><ul class="look">${st.look.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></section>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <section class="block"><h2><span class="k">B</span>Measure</h2><div class="fields">${st.fields.map(fl=>fieldHtml(st,d,fl)).join("")}</div></section>
+        ${st.result?`<section class="block"><h2><span class="k">C</span>Result</h2><div class="results" id="results">${resultsHtml(st,p)}</div></section>`:`<section class="block"><h2><span class="k">C</span>Hand-off</h2><pre class="summary-text" id="summary">${esc(summaryText(p))}</pre><div style="margin-top:10px"><button class="btn small" id="copySummary" type="button">Copy</button></div></section>`}
+      </div>
+    </div>
+    <div class="done-row"><label><input type="checkbox" id="doneBox" ${d.done?"checked":""}> Step ${st.n} done for ${esc(p.tag)}</label><div class="nav">${prev?`<button class="btn" type="button" data-go="${prev.id}">← ${prev.n}</button>`:""}${next?`<button class="btn primary" type="button" data-go="${next.id}">Next: ${next.n}. ${esc(next.name)} →</button>`:`<button class="btn primary" type="button" data-go="compare">Compare printers →</button>`}</div></div>`;
+  $("#main").querySelectorAll("[data-field]").forEach(el => el.addEventListener("input", () => {
+    const k = el.dataset.field; let v = el.value;
+    if (el.tagName === "SELECT") v = v === "true"; else if (el.type === "number") v = v === "" ? "" : +v;
+    sd(printer(), st.id)[k] = v; save();
+    const r = $("#results"); if (r) r.innerHTML = resultsHtml(st, printer());
+    const s = $("#summary"); if (s) s.textContent = summaryText(printer());
+    if (st.id === "slab" || st.id === "coupon") refreshRun(st);
+    renderRail();
+  }));
+  $("#doneBox").addEventListener("change", e => { sd(printer(), st.id).done = e.target.checked; save(); renderRail(); });
+  const cs = $("#copySummary"); if (cs) cs.addEventListener("click", () => { navigator.clipboard && navigator.clipboard.writeText(summaryText(printer())).then(()=>toast("Copied")); });
+}
+function refreshRun(st){ const t = $("#main .vals"); if (t) t.innerHTML = st.run(printer()).map(([k,v])=>`<tr><td>${esc(k)}</td><td>${esc(v)}</td></tr>`).join(""); }
+function summaryText(p){
+  const t = num(sd(p,"temp").chosen), m = finalMultiplier(p), v = volLimit(p), o = num(sd(p,"sweep").chosen), r = barResult(p), foot = num(sd(p,"coupon").foot);
+  return [
+    `${p.name} (${p.tag}) · ${p.filament}`,
+    `Filament preset (Apply command 9):`,
+    `  temperature            ${t?f(t,0)+" C":"keep"}`,
+    `  first layer temp       ${t?f(t-10,0)+" C":"keep"}`,
+    `  extrusion multiplier   ${m?f(m,4):"keep"}`,
+    `  max volumetric speed   ${v?f(v,1)+" mm3/s":"keep"}`,
+    `Print preset:`,
+    `  infill overlap         ${o?f(o,0)+" %":"keep"}`,
+    `  fill density           100 % rectilinear`,
+    `Per object / Advanced:`,
+    `  xy size compensation   ${r.g!==null?f(-r.g,3)+" mm":"keep"}`,
+    `  elephant foot          ${foot!==null?f(foot,2)+" mm":"keep"}`,
+    `  scale models by        ${r.scale!==null?f(r.scale,4)+" (shrinkage "+f(r.s*100,2)+" %)":"1 (no bar measured)"}`
+  ].join("\n");
+}
+function renderPrinter(){
+  const p = printer();
+  $("#main").innerHTML = `
+    <div class="sheet-head"><h1>Printer details</h1><div class="who"><b>${esc(p.name)}</b></div></div>
+    <p class="purpose">These are the starting values the arithmetic uses. The current multiplier is what the filament preset had before you started; the slab result multiplies from it.${p.example?" This printer is an example with made-up measurements: edit it or add your own.":""}</p>
+    <section class="block"><div class="printer-form">
+      <div class="field"><label for="pf-name">Printer name<small>as PrusaSlicer shows it</small></label><input type="text" id="pf-name" data-p="name" value="${esc(p.name)}"></div>
+      <div class="field"><label for="pf-tag">Tag engraved on parts<small>short, e.g. MK4S #3</small></label><input type="text" id="pf-tag" data-p="tag" value="${esc(p.tag)}"></div>
+      <div class="field"><label for="pf-fil">Filament</label><input type="text" id="pf-fil" data-p="filament" value="${esc(p.filament)}"></div>
+      <div class="field"><label for="pf-den">Filament density<small>g/cm³, Prusament PETG 1.27</small></label><input type="number" step="0.001" id="pf-den" data-p="density" value="${p.density}"></div>
+      <div class="field"><label for="pf-mul">Current extrusion multiplier<small>from the preset before dialing in</small></label><input type="number" step="0.0001" id="pf-mul" data-p="baseMultiplier" value="${p.baseMultiplier}"></div>
+      <div class="field"><label for="pf-noz">Nozzle</label><input type="number" step="0.05" id="pf-noz" data-p="nozzle" value="${p.nozzle}"></div>
+      <div class="field"><label for="pf-lh">Layer height</label><input type="number" step="0.05" id="pf-lh" data-p="layer" value="${p.layer}"></div>
+    </div>
+    <div style="margin-top:14px;display:flex;gap:8px"><button class="btn danger small" id="delPrinter" type="button">Remove this printer</button></div></section>`;
+  $("#main").querySelectorAll("[data-p]").forEach(el => el.addEventListener("input", () => {
+    const k = el.dataset.p; printer()[k] = el.type === "number" ? (+el.value || 0) : el.value; if (k !== "name" && k !== "tag" && k !== "filament") {} printer().example = false; save(); renderRail();
+  }));
+  $("#delPrinter").addEventListener("click", () => {
+    if (state.printers.length === 1) { toast("Keep at least one printer"); return; }
+    if (!confirm(`Remove ${p.name} and its measurements?`)) return;
+    state.printers = state.printers.filter(x => x.id !== p.id); state.active = state.printers[0].id; state.step = "temp"; save(); render();
+  });
+}
+function renderCompare(){
+  const rows = state.printers.map(p => { const r = barResult(p); const m = finalMultiplier(p); const n = slabNominal(p); const ms = num(sd(p,"slab").measured);
+    return `<tr><td>${esc(p.name)}<br><span class="tag" style="font-family:var(--mono);font-size:12px;color:var(--ink-3)">${esc(p.tag)}${p.example?" · example":""}</span></td><td>${num(sd(p,"temp").chosen)?f(sd(p,"temp").chosen,0):"—"}</td><td>${num(sd(p,"flow").chosen)?f(sd(p,"flow").chosen,0)+"%":"—"}</td><td>${ms?((ms/n.g-1)*100>0?"+":"")+f((ms/n.g-1)*100,2)+"%":"—"}</td><td>${m?f(m,4):"—"}</td><td>${volLimit(p)?f(volLimit(p),1):"—"}</td><td>${num(sd(p,"sweep").chosen)?f(sd(p,"sweep").chosen,0)+"%":"—"}</td><td>${r.g!==null?f(-r.g,3):"—"}</td><td>${r.s!==null?f(r.s*100,2)+"%":"—"}</td><td>${STEPS.filter(s=>sd(p,s.id).done).length}/${STEPS.length}</td></tr>`; }).join("");
+  $("#main").innerHTML = `
+    <div class="sheet-head"><h1>Compare printers</h1><div class="who">${state.printers.length} printer${state.printers.length===1?"":"s"}</div></div>
+    <p class="purpose">The spread between machines is the point. Temperature and multiplier normally differ by a few units; if the volumetric limit differs a lot, one hotend is not what its profile claims.</p>
+    <section class="block compare"><table><thead><tr><th>Printer</th><th>Temp °C</th><th>M221</th><th>Slab error</th><th>Multiplier</th><th>Max mm³/s</th><th>Overlap</th><th>XY comp mm</th><th>Shrink</th><th>Steps</th></tr></thead><tbody>${rows}</tbody></table></section>
+    <p class="note">Export JSON to keep a copy or move the sheet to another machine. Values live in this browser only.</p>`;
+}
+function render(){
+  renderRail();
+  const st = STEPS.find(s => s.id === state.step);
+  if (st) renderStep(st); else if (state.step === "printer") renderPrinter(); else renderCompare();
+  save();
+}
+function toast(msg){ const t = $("#toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(()=>t.classList.remove("show"), 1600); }
+
+// ---------- events ----------
+document.addEventListener("click", e => {
+  const pb = e.target.closest("[data-printer]"); if (pb) { state.active = pb.dataset.printer; render(); return; }
+  const sb = e.target.closest("[data-step]"); if (sb) { state.step = sb.dataset.step; render(); window.scrollTo({top:0}); return; }
+  const go = e.target.closest("[data-go]"); if (go) { state.step = go.dataset.go; render(); window.scrollTo({top:0}); return; }
+});
+$("#addPrinter").addEventListener("click", () => {
+  const name = prompt("Printer name as PrusaSlicer shows it", "Original Prusa MK4S 0.4 nozzle"); if (!name) return;
+  const tag = prompt("Short tag to engrave on parts", "MK4S #" + (state.printers.length + 1)) || name.slice(0, 12);
+  const p = blankPrinter(name.trim(), tag.trim()); state.printers.push(p); state.active = p.id; state.step = "printer"; render();
+});
+$("#exportBtn").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:"application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "petg-dialin-sheet.json"; document.body.appendChild(a); a.click(); a.remove(); toast("Exported");
+});
+$("#importFile").addEventListener("change", e => {
+  const file = e.target.files[0]; if (!file) return;
+  file.text().then(t => { const s = JSON.parse(t); if (!s.printers) throw new Error("no printers"); state = s; state.step = state.step || "temp"; save(); render(); toast("Imported"); }).catch(() => toast("That file is not a dial-in sheet export"));
+  e.target.value = "";
+});
+$("#resetBtn").addEventListener("click", () => { if (confirm("Clear every printer and measurement in this browser?")) { state = { printers:[examplePrinter()], active:"ex1", step:"temp" }; save(); render(); } });
+$("#railToggle").addEventListener("click", () => $("#rail").classList.toggle("collapsed"));
+if (window.matchMedia("(max-width:760px)").matches) $("#rail").classList.add("collapsed");
+
+render();
+})();
+</script>
+</body>
+</html>

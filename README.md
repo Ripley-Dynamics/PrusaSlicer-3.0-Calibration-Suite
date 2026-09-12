@@ -139,6 +139,26 @@ the G-code preview before printing. It assumes relative E and absolute XYZ,
 which is how Prusa profiles are set up. It replaces the bed's custom
 per-layer G-code list, so use it on production prints, not on the towers.
 
+## The dial-in sheet (step-by-step companion)
+
+PrusaSlicer's plugin API has no window or panel API; the only interface a
+plugin gets is the automatic Run dialog. The step-by-step walkthrough
+therefore lives beside PrusaSlicer as a single offline page:
+[`wizard/index.html`](wizard/index.html). Open it in any browser. For each
+printer it shows which command to run and the dialog values to type, takes
+your measurements, and computes the results: the extrusion multiplier from
+the slab's mass, shrinkage and XY growth from the bar, deviations on the
+coupon, and the final list of values for the Apply command. Records stay in
+the browser; Export JSON moves them between machines or into version control.
+
+### One build plate per test
+
+PrusaSlicer 3.0 projects can hold several beds. The plugin always adds to
+the bed that is currently selected and keeps custom per-layer G-code per
+bed, but the API cannot create or select beds. So the routine for every
+step is: add a bed (the + next to the bed tabs), select it, run the command.
+The sheet repeats this reminder on each step.
+
 ## Things to know before running it
 
 - **Numeric fields.** PrusaSlicer 3.0.0-alpha11 wires the `int` and `float`
@@ -199,6 +219,7 @@ the nozzle wipe path in the G-code preview.
 prusaslicer-filament-dialin/
   README.md                          this file
   run-tests.sh                       runs the suite
+  wizard/index.html                  the step-by-step dial-in sheet (offline page)
   com.ripleydynamics.filament-dialin/   the bundle to copy into the user plugins folder
     manifest.json
     temp_tower.lua                   1. temperature tower
