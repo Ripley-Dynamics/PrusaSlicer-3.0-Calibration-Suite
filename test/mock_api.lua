@@ -250,7 +250,10 @@ function Mock.new(options)
 
     local bed = setmetatable({
         hw = { name = options.printer_name or "Original Prusa MK4S 0.4 nozzle", tool_count = 1, tools = { tool } },
-        printer = new_box("printer", { nozzle_diameter = { kind = "vec2", value = 0.4 } }),
+        printer = new_box("printer", {
+            nozzle_diameter = { kind = "vec2", value = 0.4 },
+            use_relative_e_distances = { kind = "bool", value = options.relative_e ~= false },
+        }),
         print = new_box("print", speed_defs()),
         tool = new_box("tool_print", {}),
         material = new_box("material", material_defs()),

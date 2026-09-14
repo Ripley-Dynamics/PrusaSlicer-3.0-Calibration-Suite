@@ -467,6 +467,33 @@ class Helper:
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
+    PRESET_REPO, PRESET_VENDOR = "prusa-research-fff", "PrusaResearch"
+
+    def data_dir(self):
+        """PrusaSlicer's user data folder: the plugins folder is its 'lua' subfolder."""
+        self.require_plugins_dir()
+        return Path(self.plugins_dir).parent
+
+    def write_preset(self, name, yaml):
+        """Write a PrusaSlicer 3.0 user filament preset (YAML, written by the
+        sheet) into <user data>/presets/user/<repo>/<vendor>/, where PrusaSlicer
+        loads user presets from at start-up. Only filament presets, only into
+        that folder, only a plain file name."""
+        name = str(name or "").strip()
+        if not re.fullmatch(r"filament-[^\\/:*?\"<>|\x00-\x1f]{1,120}\.yaml", name):
+            raise RuntimeError("preset file name must be filament-<name>.yaml")
+        body = "\n".join(l for l in str(yaml).splitlines() if not l.lstrip().startswith("#")).lstrip()
+        if not body.startswith("kind: filament"):
+            raise RuntimeError("the preset must be a PrusaSlicer 3.0 filament preset (kind: filament)")
+        if len(yaml) > 200_000:
+            raise RuntimeError("preset too large")
+        folder = self.data_dir() / "presets" / "user" / self.PRESET_REPO / self.PRESET_VENDOR
+        folder.mkdir(parents=True, exist_ok=True)
+        path = folder / name
+        path.write_text(yaml, encoding="utf-8", newline="\n")
+        self.emit("helper", f"wrote preset {path}; restart PrusaSlicer to see it in the filament list")
+        return str(path)
+
     def write_profile(self, lua):
         if not lua.strip().startswith("--") and not lua.strip().startswith("return"):
             raise RuntimeError("profile.lua must be a Lua chunk returning a table")
@@ -598,8 +625,36 @@ class Handler(BaseHTTPRequestHandler):
         n = int(self.headers.get("Content-Length") or 0)
         return json.loads(self.rfile.read(n) or b"{}")
 
+    # The helper listens on 127.0.0.1 only, but any web page the browser has
+    # open can still send requests to it. Every request must therefore carry
+    # the loopback Host the helper was started on (defeats DNS rebinding), and
+    # every POST must come from the sheet itself: an Origin of exactly this
+    # server. The sheet uses relative URLs, so its requests pass; a page on
+    # another site, or a form on another origin, gets 403 and changes nothing.
+    def _allowed_hosts(self):
+        port = self.server.server_address[1]
+        return {f"127.0.0.1:{port}", f"localhost:{port}", f"[::1]:{port}"}
+
+    def _check_request(self, post):
+        host = (self.headers.get("Host") or "").strip().lower()
+        if host not in self._allowed_hosts():
+            self._json({"ok": False, "error": f"rejected: unexpected Host header '{host}'"}, 403)
+            return False
+        if post:
+            origin = (self.headers.get("Origin") or "").strip().lower()
+            if origin not in {f"http://{a}" for a in self._allowed_hosts()}:
+                self._json({"ok": False, "error": "rejected: this request did not come from the dial-in sheet (Origin header)"}, 403)
+                return False
+            site = (self.headers.get("Sec-Fetch-Site") or "").strip().lower()
+            if site and site not in ("same-origin", "none"):
+                self._json({"ok": False, "error": "rejected: cross-site request"}, 403)
+                return False
+        return True
+
     def do_GET(self):
         h = self.helper
+        if not self._check_request(post=False):
+            return
         if self.path in ("/", "/index.html"):
             try:
                 body = SHEET.read_bytes()
@@ -614,6 +669,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif self.path == "/api/status":
             self._json(h.status())
+        elif self.path.startswith("/assets/nozzle/"):
+            self._send_nozzle_file()
         elif self.path.startswith("/api/log"):
             since = 0
             m = re.search(r"since=(\d+)", self.path)
@@ -641,12 +698,44 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self.send_error(404)
 
+    NOZZLE_PATH = re.compile(r"^/assets/nozzle/([A-Z0-9]{1,16})/([A-Za-z0-9_\-]{1,64}\.(bgcode|gcode))$")
+
+    def _send_nozzle_file(self):
+        """Serve one of the shipped nozzle maintenance files (step 0) so the
+        sheet can offer it as a download for the USB stick. Only names that
+        match the strict pattern are looked up, and only inside assets/nozzle of
+        this checkout's bundle or the installed copy."""
+        m = self.NOZZLE_PATH.match(self.path.split("?", 1)[0])
+        if not m:
+            self.send_error(404)
+            return
+        folder, name = m.group(1), m.group(2)
+        roots = [BUNDLE_SRC]
+        dst = self.helper.bundle_dst
+        if dst:
+            roots.append(dst)
+        for root in roots:
+            candidate = Path(root) / "assets" / "nozzle" / folder / name
+            if candidate.is_file():
+                body = candidate.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Content-Disposition", f'attachment; filename="{name}"')
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(body)
+                return
+        self.send_error(404, f"{folder}/{name} is not in the bundle")
+
     def _sse(self, ev):
         self.wfile.write(f"id: {ev['id']}\ndata: {json.dumps(ev)}\n\n".encode())
         self.wfile.flush()
 
     def do_POST(self):
         h = self.helper
+        if not self._check_request(post=True):
+            return
         try:
             if self.path == "/api/install":
                 self._json({"ok": True, "path": h.install(), "status": h.status()})
@@ -654,6 +743,9 @@ class Handler(BaseHTTPRequestHandler):
                 self._json({"ok": True, "result": h.update_from_github(), "status": h.status()})
             elif self.path == "/api/profile":
                 self._json({"ok": True, "path": h.write_profile(self._body().get("lua", "")), "status": h.status()})
+            elif self.path == "/api/preset":
+                b = self._body()
+                self._json({"ok": True, "path": h.write_preset(b.get("name", ""), b.get("yaml", "")), "status": h.status()})
             elif self.path == "/api/launch":
                 self._json({"ok": True, "result": h.launch(), "status": h.status()})
             elif self.path == "/api/config":

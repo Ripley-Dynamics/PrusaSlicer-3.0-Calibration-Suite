@@ -326,6 +326,41 @@ function M.read_number(box, key)
     return nil
 end
 
+-- Reads a preset value and returns it only when it is a boolean.
+function M.read_bool(box, key)
+    local ok, v = pcall(function()
+        return box:value(key)
+    end)
+    if ok and type(v) == "boolean" then
+        return v
+    end
+    return nil
+end
+
+-- true / false when the printer preset says whether E moves are relative
+-- (use_relative_e_distances), nil when it cannot be read. Every command that
+-- writes its own G1 E moves sizes them as deltas (M83); on an absolute-E
+-- profile they would become metre-long retractions, so callers assert on false.
+function M.relative_e(bed)
+    local ok, box = pcall(function()
+        return bed:printer_presets()
+    end)
+    if ok and box then
+        return M.read_bool(box, "use_relative_e_distances")
+    end
+    return nil
+end
+
+-- Asserts that the printer profile uses relative E; logs when it cannot tell.
+function M.require_relative_e(bed, what)
+    local rel = M.relative_e(bed)
+    assert(rel ~= false, (what or "This command") .. " writes relative E moves (M83), but the printer profile has 'Use relative E distances' off. Turn it on in Printer Settings > General > Advanced, or the G-code would become a huge retraction.")
+    if rel == nil then
+        M.log("WARNING: could not read use_relative_e_distances from the printer profile; " .. (what or "this command") .. " needs relative E (M83)")
+    end
+    return rel
+end
+
 function M.layer_height(bed)
     local ok, box = pcall(function()
         return bed:print_presets()
@@ -344,6 +379,18 @@ end
 -- when the read-back disagrees.
 function M.try_set(box, key, value, what)
     what = what or key
+    -- The setter silently ignores a key the preset does not have, so probe the
+    -- key first: the getter raises "Invalid preset item name ... not found" for
+    -- an unknown key (a known key with an opaque type raises something else,
+    -- and that is fine).
+    local probe_ok, probe_err = pcall(function()
+        return box:value(key)
+    end)
+    if not probe_ok and tostring(probe_err):find("not found", 1, true) then
+        M.log("WARNING: NOT written, this preset has no setting '" .. key .. "' (" .. what .. ")")
+        return false
+    end
+    local before = probe_ok and probe_err or nil
     local ok, err = pcall(function()
         box:set(key, value)
     end)
@@ -353,6 +400,16 @@ function M.try_set(box, key, value, what)
     end
     local actual = M.read_number(box, key)
     if actual == nil then
+        -- Enums come back as strings: compare those directly.
+        local ok_s, now = pcall(function() return box:value(key) end)
+        if ok_s and type(now) == "string" then
+            if now == tostring(value) then
+                M.log("set " .. what .. " = " .. now)
+                return true
+            end
+            M.log("WARNING: NOT written, " .. what .. " is still '" .. now .. "' after setting '" .. tostring(value) .. "' (not an allowed value?)")
+            return false
+        end
         M.log("set " .. what .. " = " .. tostring(value) .. " (not readable back, unverified)")
         return true
     end

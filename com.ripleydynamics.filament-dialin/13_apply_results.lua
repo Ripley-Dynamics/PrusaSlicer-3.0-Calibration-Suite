@@ -77,5 +77,6 @@ function execute(opts)
 
     util.log(changed .. " preset value(s) written to the selected presets for " .. util.printer_name(bed))
     util.log("the presets are modified but not saved: save the filament preset under a printer-specific name to keep them")
+    util.log("for a complete preset file instead, use Save preset in the dial-in sheet: it writes a PrusaSlicer 3.0 filament preset (YAML) that inherits your system filament preset and overrides the dialed-in values, into PrusaSlicer's user presets")
     util.data(bed, "apply", { printer = util.printer_name(bed), tag = util.resolve_tag(bed, ""), changed = changed })
 end

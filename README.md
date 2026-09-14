@@ -41,7 +41,7 @@ filename or menu label, so every command's id starts with its step number
 
 | Menu entry | What it adds | What you read off it | What it feeds |
 | --- | --- | --- | --- |
-| 0. Nozzle clean before testing | Prusa's manual routine as first-layer G-code on a 20 mm anchor plate: heat, `M600` to swap to the cleaning material (nylon or PLA), purge it through, cool to that material's pull temperature, pause for the cold pull, `M600` back to the test filament, purge | The tip you pulled: a clean cast of the nozzle bore, no grit, flecks or crust | Nothing. It makes every step below measure the printer instead of the residue in it |
+| 0. Nozzle clean before testing | Nothing on the plate. Names the Prusa-firmware maintenance file shipped in `assets/nozzle/` for the selected printer (MK4S, CORE One / One+ / One+ (Gen 2), CORE One L / L+) and nozzle (standard or High Flow): a `.bgcode` run from the USB stick that homes, parks high, purges nylon at 290 °C, cools with the fan and does the extruder-driven cold pull at 145 °C with the printer's own prompts. The MK4S also gets a PLA cold pull, a hot flush, a flow test and a brush-park file. The sheet offers the files as downloads | The tip you pulled: a clean cast of the nozzle bore, no grit, flecks or crust | Nothing. It makes every step below measure the printer instead of the residue in it |
 | 1. Temperature tower | PrusaSlicer's own calibration model (80 × 10 mm base, 10 mm steps with bridges and overhangs), one `M104` per step, printed solid | Bridge sag, overhang fray, gloss, layer bonding | `temperature`, `first_layer_temperature` |
 | 2. Max volumetric flow | PrusaSlicer's single-wall comb with one speed modifier per band, plus a solid label column; or a solid block | Highest band with no gaps, roughness or extruder clicking | `filament_max_volumetric_speed` |
 | 3. Pressure advance › Line test (recommended) | OrcaSlicer's PA Line as first-layer G-code on a small anchor plate: one line per value (slow, fast, slow runs), the value written beside it in extruded digits, `M572` / `M900` / Klipper's command per line | The line whose fast run is as wide as its slow ends | `pressure_advance_value`, mode `enabled` |
@@ -55,7 +55,7 @@ filename or menu label, so every command's id starts with its step number
 | 10. Small-feature tower | Pyramid, cone and 3/5/8 mm pillars on a plate | Height at which tips degrade | `slowdown_below_layer_time`, `min_print_speed`, fan on short layers |
 | 11. Reference coupon | 50 × 25 × 10 mm solid body with a hole, an overhang wing on the +X end, and 0.8 / 1.2 / 1.6 mm fins on top | Dimensions, the wing's underside, whether each fin is solid | `xy_size_compensation`, `elefant_foot_compensation`, thin-wall settings |
 | 12. Stringing tower | Two pillars, temperature and optional fan steps | Stringing per band | temperature, fan limits |
-| 13. Apply dialed-in values | Nothing printed. Writes typed values into the selected presets and reads them back | The log or the helper's drawer | the presets |
+| 13. Apply dialed-in values | Nothing printed. Writes typed values into the presets that are selected right now and reads them back; a write that did not happen (unknown key, value not accepted) is reported as NOT written. For a preset file, the sheet's **Save preset** writes a complete PrusaSlicer 3.0 filament preset (see below) | The log or the helper's drawer | the presets |
 | Tools / Apply values from profile.lua | Nothing printed. Writes the values the sheet saved for the selected printer | The log or the helper's drawer | the presets |
 | Tools / Periodic nozzle wipe G-code | Nothing printed. Inserts a brush-wipe routine every N mm of height | | production prints, once a brush is fitted |
 | Tools / Open the dial-in sheet | Nothing printed. Asks the helper to open the sheet in your browser (it reads PrusaSlicer's output); with no helper it only logs the address | | the sheet |
@@ -109,8 +109,12 @@ earlier steps.
    (minutes, first layer only); the tower is there for a closer look at
    corners. PrusaSlicer 3.0 stores PA in the filament preset (mode plus
    value); Prusa firmware can also self-calibrate it, and the line test
-   checks that result. The line test needs the bed centre, taken from the
-   printer name for Prusa machines or typed in, and relative extrusion.
+   checks that result. The line test needs the bed size, known for the
+   XL / XL+ (360 × 360), CORE One / One+ / One+ (Gen 2) (250 × 220),
+   CORE One L / L+ (300 × 300) and MK4S (250 × 210) from the printer name
+   and typed in as the bed centre for anything else; it refuses a pattern
+   that would run off the bed, and it refuses a printer profile that does
+   not use relative E distances (the pattern's E values are relative moves).
 4. **Flow**, at the chosen temperature, limit and PA. Orca's recommended
    sweep is one pass from -5 to +5% in 1% steps; halve the step for a closer
    look, or use the legacy two passes (-20 to +20 by 5, then 0 to -9 by 1)
@@ -219,8 +223,9 @@ print profile, starting from the stock Prusament PETG profile. The sheet
 (`wizard/index.html`) walks through it and does the arithmetic; the short
 form:
 
-0. **Nozzle clean**: nylon (or PLA) at the material's own temperatures, once
-   per printer, before anything else is printed.
+0. **Nozzle clean**: run the printer's nylon cold-pull file from the USB
+   stick (step 0 names it; the sheet downloads it), once per printer, before
+   anything else is printed.
 1. **Temperature tower**: 260 down to 235 °C in 5 °C bands. Choose the
    coolest clean band. Apply it (step 13 or the profile).
 2. **Max volumetric flow** on the comb, 6 to 24 mm³/s. Limit = 85% of the
@@ -271,9 +276,49 @@ the bar, deviations on the coupon, and the final values for the Apply
 command. Records stay in the browser; Export shows JSON to copy between
 machines.
 
+### Save preset: a complete PrusaSlicer 3.0 filament preset
+
+PrusaSlicer 3.0 stores presets as YAML trees: a user preset that `inherits`
+a system preset is evaluated with the printer and nozzle in effect, so every
+value it does not set is exactly what PrusaSlicer would use for that machine.
+**Save preset** in the sheet (step 13, or the side list) shows such a file
+for the active dial-in:
+
+```yaml
+kind: filament
+id: 'dialin-prusament-petg-c1-0-4-dialed'
+name: 'Prusament PETG · C1 0.4 dialed'
+inherits:
+- 'Prusament PETG'
+condition: printer.base_model == "COREONE" and tool.nozzle_diameter == 0.4
+values:
+  temperature: 245
+  first_layer_temperature: 235
+  extrusion_multiplier: 0.9856
+  filament_max_volumetric_speed: 20.4
+  pressure_advance: enabled
+  pressure_advance_value: 0.045
+  min_fan_speed: 40
+  max_fan_speed: 70
+  slowdown_below_layer_time: 15
+  min_print_speed: 12
+  filament_notes: '...'
+```
+
+The dialog's *Based on* field names the system filament preset it inherits
+from (exactly as PrusaSlicer lists it; the dial-in's material by default).
+**Write to PrusaSlicer** saves it as
+`<user data>/presets/user/prusa-research-fff/PrusaResearch/filament-<name>.yaml`,
+where PrusaSlicer loads user presets at start-up, and also writes
+`profile.lua` (below). Without the helper, **Download .yaml** gives the same
+file to copy there by hand. Restart PrusaSlicer and pick the preset in the
+filament list. The per-object values (XY compensation, elephant foot, the
+scale factor) and the print-preset overlap go into the preset's notes,
+because they are not filament settings.
+
 ### profile.lua: the sheet's values inside the plugin
 
-Step 13 of the sheet writes a `profile.lua`, keyed by printer name as
+Step 13 of the sheet also writes a `profile.lua`, keyed by printer name as
 PrusaSlicer shows it, with the tag and the dialed-in values for each
 printer. Put it in the bundle folder (the helper does this with one click)
 and:
@@ -306,7 +351,11 @@ The window minimises itself and does this, in order:
    and starts the new version once (`helper updated, restarting`);
 2. **installs the latest plugin**: the same download as **Load latest plugin**
    below, into PrusaSlicer's user plugins folder, keeping your `profile.lua`;
-3. **opens the dial-in sheet** at `http://127.0.0.1:8765/` in your browser;
+3. **opens the dial-in sheet** at `http://127.0.0.1:8765/` in your browser.
+   The helper answers only requests that carry that loopback address as
+   their `Host`, and accepts writes (install, update, profile, preset,
+   launch, paths) only from the sheet itself (an `Origin` of that address),
+   so another web page open in the browser cannot drive it;
 4. **starts PrusaSlicer** when it knows where it is (installed builds, and
    portable zips unpacked in Downloads or on the Desktop), so its output lands
    in the sheet's log drawer. If it does not know, it says so and the sheet's

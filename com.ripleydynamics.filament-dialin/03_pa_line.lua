@@ -40,10 +40,17 @@ local COMMANDS = {
     prusa = "M572 S%s", marlin = "M900 K%s", klipper = "SET_PRESSURE_ADVANCE ADVANCE=%s", reprap = "M572 D0 S%s",
 }
 
--- Bed centres by printer family, front-left origin.
-local BED_CENTRES = {
-    { "core one", 125, 110 }, { "xl", 180, 180 }, { "mini", 90, 90 }, { "mk4", 125, 105 }, { "mk3", 125, 105 }, { "mk2", 125, 105 },
+-- Bed size by printer family (X, Y in mm, front-left origin); the centre is
+-- half of it. Longer names first so "core one l" is not taken for "core one";
+-- "xl" only as a whole word so a name that merely contains the letters does
+-- not get a 360 mm bed. Other printers type the centre into the dialog.
+local BEDS = {
+    { "core one l%f[%A]", 300, 300, "CORE One L / L+" },
+    { "core one", 250, 220, "CORE One / One+ / One+ (Gen 2)" },
+    { "mk4s", 250, 210, "MK4S" },
+    { "%f[%a]xl%f[%A]", 360, 360, "XL / XL+" },
 }
+local EDGE = 3 -- mm kept clear of the bed edges
 
 -- Seven-segment strokes in a unit cell: x 0..1, y 0..1 (y up).
 local SEG = {
@@ -54,11 +61,11 @@ local GLYPHS = {
     ["6"] = "afgedc", ["7"] = "abc", ["8"] = "abcdefg", ["9"] = "abcdfg",
 }
 
-local function bed_centre(name)
+local function bed_size(name)
     local lower = name:lower()
-    for _, entry in ipairs(BED_CENTRES) do
-        if lower:find(entry[1], 1, true) then
-            return entry[2], entry[3]
+    for _, entry in ipairs(BEDS) do
+        if lower:find(entry[1]) then
+            return entry[2], entry[3], entry[4]
         end
     end
     return nil
@@ -91,10 +98,15 @@ function execute(opts)
     local tag = util.resolve_tag(bed, opts.tag)
     local name = util.printer_name(bed)
     local cx, cy = util.num(opts.bed_x, "bed centre X", 0), util.num(opts.bed_y, "bed centre Y", 0)
-    if cx <= 0 or cy <= 0 then
-        cx, cy = bed_centre(name)
-        assert(cx, "Bed centre unknown for printer '" .. name .. "': enter Bed centre X and Y (half the bed size)")
+    local bed_w, bed_d, family
+    if cx > 0 and cy > 0 then
+        bed_w, bed_d, family = 2 * cx, 2 * cy, "typed centre"
+    else
+        bed_w, bed_d, family = bed_size(name)
+        assert(bed_w, "Bed size unknown for printer '" .. name .. "' (known: XL / XL+, CORE One / One+ / One+ (Gen 2), CORE One L / L+, MK4S): enter Bed centre X and Y (half the bed size)")
+        cx, cy = bed_w / 2, bed_d / 2
     end
+    util.require_relative_e(bed, "The pressure advance line test")
 
     local width = nozzle * 1.2
     local diameter = util.read_number(bed:material_presets(0), "filament_diameter") or 1.75
@@ -103,6 +115,17 @@ function execute(opts)
     local y0 = cy + PLATE / 2 + 5
     local label_x = x0 + SHORT + LONG + SHORT + 4
     local fmt = function(v) return util.fmt(v, 4) end
+
+    -- The pattern must stay on the bed: lines climb from y0 by `spacing`, the
+    -- label of the last line reaches half a digit above it, the labels sit to
+    -- the right of the lines (up to five glyphs: "0.080").
+    local x_max = label_x + 5 * (DIGIT_W + DIGIT_GAP)
+    local y_max = y0 + (n - 1) * spacing + DIGIT_H / 2
+    assert(x0 >= EDGE and x_max <= bed_w - EDGE, string.format(
+        "The pattern is %s mm wide and does not fit the %s mm bed (%s)", util.fmt(x_max - x0), util.fmt(bed_w), family))
+    assert(y_max <= bed_d - EDGE, string.format(
+        "%d lines at %s mm spacing reach y = %s mm, past the %s mm bed (%s); use fewer lines (a larger interval) or a smaller spacing",
+        n, util.fmt(spacing), util.fmt(y_max), util.fmt(bed_d), family))
 
     local g = { "; filament-dialin pressure advance line test", "G90" }
     local function travel(x, y) g[#g + 1] = string.format("G0 X%s Y%s F9000", fmt(x), fmt(y)) end
@@ -158,7 +181,7 @@ function execute(opts)
         tag, n, util.fmt(values[1], 3), util.fmt(values[n], 3), firmware, util.fmt(slow), util.fmt(fast), util.fmt(cx), util.fmt(cy),
         util.fmt(SHORT + LONG + SHORT + 4 + 5 * (DIGIT_W + DIGIT_GAP)), util.fmt((n - 1) * spacing)))
     util.log("pick the line whose fast middle run is as wide as its slow ends: thin start = too little PA, fat end blob = too much; the value is written beside each line")
-    util.log("requires relative extrusion (M83) in the printer profile; check the pattern position in the G-code preview before printing")
+    util.log("check the pattern position in the G-code preview before printing")
     util.data(bed, "pa", { method = "line", tag = tag, values = util.join(values, 3), sections = n,
-        slow = slow, fast = fast, bed_x = cx, bed_y = cy, firmware = firmware, line_width = width })
+        slow = slow, fast = fast, bed_x = cx, bed_y = cy, bed_w = bed_w, bed_d = bed_d, firmware = firmware, line_width = width })
 end

@@ -355,8 +355,9 @@ body.has-log:has(.log.min) main{padding-bottom:72px}
   <h2 id="exportTitle">Export sheet</h2>
   <p class="presetline" id="exportPreset" hidden></p>
   <p id="exportNote">Save this as petg-dialin-sheet.json. Import it on another machine.</p>
+  <div class="fields" id="exportBaseWrap" hidden><div class="field"><label for="exportBase">Based on the PrusaSlicer system filament preset<small>Its exact name in PrusaSlicer, e.g. Prusament PETG. Everything you did not dial in is inherited from it, as PrusaSlicer evaluates it for this printer and nozzle.</small></label><input type="text" id="exportBase" spellcheck="false"></div></div>
   <textarea id="exportText" readonly spellcheck="false"></textarea>
-  <div class="export-actions"><button class="btn" id="exportClose" type="button">Close</button><button class="btn" id="exportCopy" type="button">Copy JSON</button><button class="btn primary" id="exportWrite" type="button" hidden>Write to PrusaSlicer</button></div>
+  <div class="export-actions"><button class="btn" id="exportClose" type="button">Close</button><button class="btn" id="exportCopy" type="button">Copy JSON</button><button class="btn" id="exportDownload" type="button" hidden>Download .yaml</button><button class="btn primary" id="exportWrite" type="button" hidden>Write to PrusaSlicer</button></div>
 </dialog>
 
 <script>
@@ -395,15 +396,16 @@ function blankPrinter(name, tag){
 }
 // A dial-in is one printer + one material. `filament` is the material; `model` and the
 // PrusaSlicer preset name are derived from it and the nozzle.
-const MODELS = ["MK4S","MK4","CORE One","XL","MINI+","MK3S+","Other"];
+const MODELS = ["MK4S","MK4","CORE One","CORE One L","XL","MINI+","MK3S+","Other"];
 const PS_NAME = { "MK4S":"Original Prusa MK4S", "MK4":"Original Prusa MK4", "CORE One":"Original Prusa CORE One",
-  "XL":"Original Prusa XL", "MINI+":"Original Prusa MINI & MINI+", "MK3S+":"Original Prusa MK3S & MK3S+" };
+  "CORE One L":"Original Prusa CORE One L", "XL":"Original Prusa XL", "MINI+":"Original Prusa MINI & MINI+", "MK3S+":"Original Prusa MK3S & MK3S+" };
 const MATERIALS = [["Prusament PETG",1.27],["Prusament PLA",1.24],["Prusament ASA",1.07],["Prusament PC Blend",1.22],["Prusament PA11 CF",1.10]];
 const NOZZLES = [0.25,0.4,0.5,0.6,0.8];
 function modelFromName(name){
   const s = String(name || "");
   if (/mk4\s*s/i.test(s)) return "MK4S";
   if (/mk4/i.test(s)) return "MK4";
+  if (/core\s*one\s*l(?![a-z])/i.test(s)) return "CORE One L";
   if (/core\s*one/i.test(s)) return "CORE One";
   if (/(^|[^a-z])xl([^a-z]|$)/i.test(s)) return "XL";
   if (/mini/i.test(s)) return "MINI+";
@@ -490,9 +492,10 @@ const BED = "Bed: add a new build plate (the + next to the bed tabs) and select 
 const STEPS = [
   { id:"clean", n:0, name:"Nozzle clean", short:"Nozzle clean", share:"printer", cmd:"0. Nozzle clean before testing",
     purpose:"A clean hotend first, so the sheet measures the printer and not debris.",
-    run:p=>[["Filament","nylon or PLA"],["Purge temperature","0 (material default)"],["Pull temperature","0 (material default)"],["Purge","100"],["Firmware","prusa"]],
-    look:["The sequence heats, purges, prompts a filament change, cools, then pauses for the pull.","Pull the filament out firmly by hand when the printer pauses.","The tip should be a clean cast of the nozzle bore; flecks or crust mean run it again.","Do this once per printer, and again whenever a dialed-in machine drifts."],
-    fields:[{k:"material",label:"Cleaning filament",type:"select",opts:[["nylon","Nylon"],["pla","PLA"]]},{k:"done_by",label:"Method",type:"select",opts:[["gcode","G-code sequence"],["firmware","Firmware cold pull"],["manual","Manual cold pull"]]},{k:"notes",label:"What came out",type:"text",ph:"colour, debris"}],
+    run:p=>[["Routine","cold_pull_nylon"],["High Flow / CHT nozzle","off"],["Tag",p.tag]],
+    extra:p=>nozzleFilesHtml(p),
+    look:["This step is not sliced. The plugin only names the maintenance file for the selected printer and nozzle; download it below (or take it from the plugin folder) onto the USB stick and run it like a print.","The file homes, parks high at the bed centre, heats to 290 °C, purges nylon, cools with the fan, then does the cold pull with the extruder at 145 °C and asks you to pull the filament out.","Load the filament the prompt names first and put a scrap of paper on the bed under the nozzle. The prompts say Continue; the printer's button says Resume.","The tip should be a clean cast of the nozzle bore; flecks or crust mean run it again. MK4S only: for a suspected clog run flow_test, hot_flush, flow_test, cold_pull_nylon, flow_test.","Do this once per printer, and again whenever a dialed-in machine drifts. No file ships for the XL, MINI or MK3: use the printer's own cold-pull routine."],
+    fields:[{k:"material",label:"Cleaning filament",type:"select",opts:[["nylon","Nylon"],["pla","PLA"]]},{k:"done_by",label:"Method",type:"select",opts:[["usb","Maintenance file from USB"],["firmware","Firmware cold pull"],["manual","Manual cold pull"]]},{k:"notes",label:"What came out",type:"text",ph:"colour, debris"}],
     result:p=>[{l:"Nozzle",s:"baseline for every step below",v:sd(p,"clean").done?"clean":"—",big:!!sd(p,"clean").done}]},
   { id:"temp", n:1, name:"Temperature tower", short:"Temperature", share:"model", cmd:"1. Temperature tower",
     purpose:"Coolest temperature that still bonds layers and holds the bridges.",
@@ -512,7 +515,7 @@ const STEPS = [
       {l:"Solid infill speed",s:"at "+f(p.nozzle*1.125,3)+" × "+f(p.layer,2)+" mm lines",v:l?f(l/extrusionArea(p.nozzle*1.125,p.layer),0)+" mm/s":"—",muted:true}];}},
   { id:"pa", n:3, name:"Pressure advance line", short:"Pressure advance", share:"printer", cmd:"3. Pressure advance › Line test (recommended)",
     purpose:"Pressure advance value that keeps line width even through the fast runs.",
-    run:p=>[["Lowest","0.00"],["Highest","0.08"],["By interval","on"],["Interval","0.005"],["Lines","9"],["Slow speed","20"],["Fast speed","100"],["Spacing","5"],["Bed centre","0 (from name)"],["Retraction","0.8"],["Firmware","prusa"],["Tag",p.tag]],
+    run:p=>[["Lowest","0.00"],["Highest","0.08"],["By interval","on"],["Interval","0.005"],["Lines","9"],["Slow speed","20"],["Fast speed","100"],["Spacing","5"],["Bed centre","0 (from the printer name: XL/XL+, CORE One/One+, CORE One L/L+, MK4S; others type half the bed size)"],["Retraction","0.8"],["Firmware","prusa"],["Tag",p.tag]],
     look:["The pattern is first-layer G-code on an anchor plate; check its position in the preview.","Each line's value is written beside it in extruded digits.","Pick the line whose fast middle run is the same width as its slow ends.","Too little: thin start, fat blob at the end. Too much: fat start, gap at the end."],
     fields:[{k:"chosen",label:"Chosen value",unit:"",type:"number",step:0.001},{k:"notes",label:"Notes",type:"text"}],
     result:p=>{const v=num(sd(p,"pa").chosen);return[
@@ -595,9 +598,9 @@ const STEPS = [
     fields:[{k:"temp",label:"Cleanest temperature",unit:"°C",type:"number",step:1},{k:"fan",label:"Chosen fan",unit:"%",type:"number",step:5},{k:"notes",label:"Notes",type:"text"}],
     result:p=>{const s=sd(p,"string");return[{l:"Stringing",v:num(s.temp)?f(s.temp,0)+" °C / "+(num(s.fan)!==null?f(s.fan,0)+" % fan":"fan as slicer"):"—"}];}},
   { id:"apply", n:13, name:"Apply and save preset", short:"Apply", share:"printer", cmd:"13. Apply dialed-in values",
-    purpose:"Type these into the Apply dialog, then save the preset under this printer.",
+    purpose:"Save preset writes a complete PrusaSlicer 3.0 filament preset for this printer; the Apply dialog is the live alternative.",
     run:p=>{const t=num(sd(p,"temp").chosen);const m=finalMultiplier(p);const v=volLimit(p);const o=num(sd(p,"overlap").chosen);return[["Nozzle",t?f(t,0):"0 (keep)"],["First layer",t?f(t-10,0):"0 (keep)"],["Multiplier",m?f(m,4):"(blank)"],["Max volumetric",v?f(v,1):"(blank)"],["Pressure advance",num(sd(p,"pa").chosen)!==null?f(sd(p,"pa").chosen,3):"(blank)"],["Infill overlap",o?f(o,0)+"%":"(blank)"],["Min fan",num(sd(p,"cooling").chosen)!==null?f(sd(p,"cooling").chosen,0):"-1 (keep)"],["Max fan",num(sd(p,"cooling").chosen)!==null?f(num(sd(p,"cooling").max)??Math.min(100,sd(p,"cooling").chosen+20),0):"-1 (keep)"],["Slowdown time",num(sd(p,"small").slowdown)!==null?f(sd(p,"small").slowdown,0):"-1 (keep)"],["Minimum speed",num(sd(p,"small").minspeed)!==null?f(sd(p,"small").minspeed,0):"-1 (keep)"],["100% rectilinear","on"]]},
-    look:["Nothing is saved until you save the filament preset and select it in the printer's profile.","Or save profile.lua below and run Tools › Apply values from profile.lua.","XY compensation and elephant foot are per-object settings, not preset values.","Scale production models by the factor from step 8 when the parts are large."],
+    look:["Save preset (below, or in the side list) shows the finished preset as a PrusaSlicer 3.0 YAML file: it inherits the system filament preset you started from and overrides the dialed-in values. Write to PrusaSlicer puts it into PrusaSlicer's user presets; restart PrusaSlicer and pick it in the filament list.","The plugin's step 13 writes the same values into the presets that are selected right now instead; nothing is saved until you save that preset in PrusaSlicer.","XY compensation and elephant foot are per-object settings, not preset values; they are kept in the preset's notes.","Scale production models by the factor from step 8 when the parts are large."],
     fields:[],
     result:null }
 ];
@@ -670,7 +673,7 @@ function isStepView(){ return !(state.step === "welcome" || state.step === "new"
 function renderTopbar(){
   const slot = $("#dialinSlot");
   slot.innerHTML = (isStepView() && state.printers.length)
-    ? `<span class="select-wrap"><select class="dialin-select" id="dialinSelect" aria-label="Dial-in">${state.printers.map(x => `<option value="${x.id}"${x.id === printer().id ? " selected" : ""}>${esc(x.filament)} · ${esc(x.tag)}</option>`).join("")}</select>${ICON.down}</span>`
+    ? `<span class="select-wrap"><select class="dialin-select" id="dialinSelect" aria-label="Dial-in">${state.printers.map(x => `<option value="${esc(x.id)}"${x.id === printer().id ? " selected" : ""}>${esc(x.filament)} · ${esc(x.tag)}</option>`).join("")}</select>${ICON.down}</span>`
     : "";
   renderHelperBar();
 }
@@ -686,7 +689,7 @@ function renderRail(){
   } else {
     const rows = state.printers.map(x => {
       const n = doneCount(x);
-      return `<button class="rrow tall" type="button" data-open="${x.id}" aria-current="${x.id === p.id && state.step !== "welcome" && state.step !== "new"}"><span class="two"><b>${esc(x.filament)}</b><span>${esc(x.tag)} · ${n} of ${PROGRESS.length}</span></span>${n === PROGRESS.length ? `<span class="ok">${ICON.check}</span>` : ""}</button>`;
+      return `<button class="rrow tall" type="button" data-open="${esc(x.id)}" aria-current="${x.id === p.id && state.step !== "welcome" && state.step !== "new"}"><span class="two"><b>${esc(x.filament)}</b><span>${esc(x.tag)} · ${n} of ${PROGRESS.length}</span></span>${n === PROGRESS.length ? `<span class="ok">${ICON.check}</span>` : ""}</button>`;
     }).join("");
     // the New row is a rail child, not a list item, so the rail's 14px gap separates it
     $("#rail").innerHTML = `<p class="eyebrow">Dial-ins</p><div class="rlist">${rows}</div>
@@ -706,6 +709,23 @@ function resultsHtml(st, p){
   return st.result(p).map((r, i) => `<div class="resrow ${i===0?"first":""}">
       <div class="res"><span class="l">${esc(r.l)}</span><span class="v ${r.muted&&i>0?"muted":""}">${esc(r.v)}${r.pill?` <span class="pill ${r.pill[0]}">${r.pill[1]}</span>`:""}</span></div>
       ${r.s?`<div class="sub">${esc(r.s)}</div>`:""}</div>`).join("");
+}
+// Step 0: the Prusa-firmware maintenance files shipped in the bundle (assets/nozzle/<folder>/),
+// served by the helper at /assets/nozzle/... so they can go straight onto the USB stick.
+const NOZZLE_FILES = {
+  MK4S: { folder:"MK4S", files:[["01_cold_pull_nylon_STD","Nylon cold pull, standard nozzle"],["01_cold_pull_nylon_HF","Nylon cold pull, High Flow / CHT"],["02_cold_pull_pla","PLA cold pull (firmware numbers)"],["03_hot_flush_STD","Hot flush, standard"],["03_hot_flush_HF","Hot flush, High Flow"],["04_flow_test_STD","Flow test, standard"],["04_flow_test_HF","Flow test, High Flow"],["05_nozzle_brush","Park for a brass-brush clean"]] },
+  "CORE One": { folder:"COREONE", files:[["01_cold_pull_nylon_STD","Nylon cold pull, standard nozzle"],["01_cold_pull_nylon_HF","Nylon cold pull, High Flow / CHT"]] },
+  "CORE One L": { folder:"COREONEL", files:[["01_cold_pull_nylon_STD","Nylon cold pull, standard nozzle"],["01_cold_pull_nylon_HF","Nylon cold pull, High Flow / CHT"]] },
+};
+function nozzleFilesHtml(p){
+  const set = NOZZLE_FILES[p.model || modelFromName(p.name)];
+  if (!set) return `<p class="sub">No maintenance file ships for ${esc(p.model || "this printer")}. Use the printer's own cold-pull routine (Control › Cold Pull where the firmware has it).</p>`;
+  const rows = set.files.map(([f, what]) => {
+    const name = `${set.folder}_${f}`;
+    const href = `/assets/nozzle/${encodeURIComponent(set.folder)}/${encodeURIComponent(name)}`;
+    return `<div class="runrow"><span>${esc(what)}</span><b><a href="${href}.bgcode" download>${esc(name)}.bgcode</a> · <a href="${href}.gcode" download>plain</a></b></div>`;
+  }).join("");
+  return `<p class="eyebrow" style="margin-top:12px">Files for the USB stick</p><div class="runrows">${rows}</div><p class="sub">Downloads work while the helper serves this page; otherwise the files are in the plugin folder under assets/nozzle/${esc(set.folder)}/.</p>`;
 }
 function runRowsHtml(st, p){
   return st.run(p).map(([k,v]) => `<div class="runrow"><span>${esc(k)}</span><b>${esc(v)}</b></div>`).join("");
@@ -730,6 +750,7 @@ function renderStep(st){
         <p class="eyebrow">Run</p>
         <div class="cmd">Plugins › Filament Dial-In › ${esc(st.cmd)}</div>
         <div class="runrows" id="runrows">${runRowsHtml(st, p)}</div>
+        ${st.extra ? st.extra(p) : ""}
         <details class="disc"><summary><span>What to look for</span>${ICON.right}</summary><ul>${looks.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></details>
       </section>
       ${st.fields.length ? `<section class="card">
@@ -798,7 +819,7 @@ function renderWelcome(){
     const n = doneCount(p);
     return `<div class="dcard"><p class="eyebrow">${esc(p.tag)}</p><div class="ttl">${esc(p.filament)}</div>
       <div class="pbar"><div class="track"><div class="fill" style="width:${Math.round(n/total*100)}%"></div></div><span class="cnt">${n} of ${total}</span></div>
-      <button class="btn" type="button" data-open="${p.id}">${n===total?"Open":"Continue"}</button></div>`;
+      <button class="btn" type="button" data-open="${esc(p.id)}">${n===total?"Open":"Continue"}</button></div>`;
   }).join("");
   $("#main").innerHTML = `<div class="welcome">
     <div class="hero">
@@ -936,6 +957,8 @@ function openExportJson(){
   $("#exportCopy").disabled = false;
   $("#exportWrite").hidden = true;
   $("#exportWrite").disabled = false;
+  $("#exportDownload").hidden = true;
+  $("#exportBaseWrap").hidden = true;
   openDialog($("#exportDialog"));
 }
 function openSavePreset(){
@@ -948,11 +971,15 @@ function openSavePreset(){
   $("#exportNote").textContent = fresh
     ? "Start a dial-in first."
     : helper
-      ? "Write it, then Plugins › Filament Dial-In › Tools › Apply values from profile.lua."
-      : "Save as profile.lua in the bundle folder, then Plugins › Filament Dial-In › Tools › Apply values from profile.lua.";
-  $("#exportText").value = fresh ? "" : profileLua();
+      ? "A complete PrusaSlicer 3.0 filament preset. Write to PrusaSlicer puts it into PrusaSlicer's user presets (restart PrusaSlicer to see it) and also writes profile.lua for the plugin's Tools › Apply."
+      : "A complete PrusaSlicer 3.0 filament preset. Download it and copy it into PrusaSlicer's user data folder under presets/user/prusa-research-fff/PrusaResearch/, then restart PrusaSlicer.";
+  $("#exportBaseWrap").hidden = fresh;
+  $("#exportBase").value = fresh ? "" : (p.baseFilament || p.filament || "");
+  $("#exportText").value = fresh ? "" : presetYaml(p);
   $("#exportCopy").textContent = "Copy";
   $("#exportCopy").disabled = fresh;
+  $("#exportDownload").hidden = false;
+  $("#exportDownload").disabled = fresh;
   $("#exportWrite").hidden = !helper;
   $("#exportWrite").disabled = fresh;
   openDialog($("#exportDialog"));
@@ -1090,7 +1117,7 @@ const PLAN_WAVES = [
 ];
 function gateMapSection(){
   const p = planPrinter();
-  const opts = state.printers.map(x => `<option value="${x.id}" ${x.id===p.id?"selected":""}>${esc(x.filament)} · ${esc(x.tag)}</option>`).join("");
+  const opts = state.printers.map(x => `<option value="${esc(x.id)}" ${x.id===p.id?"selected":""}>${esc(x.filament)} · ${esc(x.tag)}</option>`).join("");
   const waveRows = PLAN_WAVES.map(([w,a,b,c]) => `<tr><td>Wave ${w}</td><td>${esc(a)}</td><td>${esc(b)}</td><td>${esc(c)}</td></tr>`).join("");
   return `<section class="card">
     <div class="gm-top"><p class="eyebrow">Gate map</p>
@@ -1156,6 +1183,68 @@ function profileEntry(p){
   return e;
 }
 function luaComment(s){ return String(s ?? "").replace(/[\r\n]+/g, " "); }
+
+// ---------- PrusaSlicer 3.0 user preset ----------
+// PrusaSlicer 3.0 keeps presets as YAML trees. A user preset that `inherits` a system
+// preset is evaluated with the printer and nozzle in effect, so every value we do not set
+// comes from the system preset exactly as PrusaSlicer would compute it for this machine;
+// `values` override on top. Files live in <user data>/presets/user/<repo>/<vendor>/ and
+// are named filament-<name>.yaml; PrusaSlicer loads them at start-up.
+const PRESET_REPO = "prusa-research-fff", PRESET_VENDOR = "PrusaResearch";
+const BASE_MODEL = { "MK4S":"MK4", "MK4":"MK4", "CORE One":"COREONE", "CORE One L":"COREONE", "XL":"XL", "MINI+":"MINI", "MK3S+":"MK3" };
+function yamlStr(v){ return "'" + String(v ?? "").replace(/[\r\n]+/g, " ").replace(/'/g, "''") + "'"; }
+function yamlComment(s){ return String(s ?? "").replace(/[\r\n]+/g, " "); }
+function presetFileName(p){ return "filament-" + String(p.presetName || "dialed").replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_") + ".yaml"; }
+function presetValues(p){
+  // [key, yaml scalar] for the filament preset. Same numbers as profileEntry.
+  const t = num(sd(p,"temp").chosen), m = finalMultiplier(p), v = volLimit(p);
+  const e = [];
+  if (t) { e.push(["temperature", f(t,0)]); e.push(["first_layer_temperature", f(t-10,0)]); }
+  if (m) e.push(["extrusion_multiplier", f(m,4)]);
+  if (v) e.push(["filament_max_volumetric_speed", f(v,1)]);
+  if (num(sd(p,"pa").chosen)!==null) { e.push(["pressure_advance", "enabled"]); e.push(["pressure_advance_value", f(sd(p,"pa").chosen,3)]); }
+  const cf = num(sd(p,"cooling").chosen); if (cf !== null) { e.push(["min_fan_speed", f(cf,0)]); e.push(["max_fan_speed", f(num(sd(p,"cooling").max)??Math.min(100,cf+20),0)]); }
+  if (num(sd(p,"small").slowdown)!==null) e.push(["slowdown_below_layer_time", f(sd(p,"small").slowdown,0)]);
+  if (num(sd(p,"small").minspeed)!==null) e.push(["min_print_speed", f(sd(p,"small").minspeed,0)]);
+  return e;
+}
+function presetYaml(p){
+  const base = String(p.baseFilament || p.filament || "").trim();
+  const name = p.presetName || presetDefault(p.filament, p.tag);
+  const model = p.model || modelFromName(p.name);
+  const baseModel = BASE_MODEL[model];
+  const nozzle = +p.nozzle || 0.4;
+  const o = num(sd(p,"overlap").chosen), r = barResult(p), foot = num(sd(p,"coupon").foot);
+  const notes = ["Dialed in with the Filament Dial-In sheet on " + new Date().toISOString().slice(0,10) + " for " + p.tag + "."];
+  if (o) notes.push("Print preset: infill_overlap " + f(o,0) + "%, 100% rectilinear infill.");
+  if (r.g !== null) notes.push("Per object: xy_size_compensation " + f(-r.g,3) + " mm.");
+  if (foot !== null) notes.push("Per object: elefant_foot_compensation " + f(foot,2) + " mm.");
+  if (r.s !== null) notes.push("Scale large parts by " + f(1/(1-r.s),4) + " (shrinkage " + f(r.s*100,2) + "%).");
+  const cond = [baseModel ? `printer.base_model == "${baseModel}"` : null, `tool.nozzle_diameter == ${f(nozzle,2).replace(/0+$/,"").replace(/\.$/,"")}`].filter(Boolean).join(" and ");
+  const id = "dialin-" + String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  const lines = [
+    "# PrusaSlicer 3.0 filament preset written by the Filament Dial-In sheet.",
+    "# " + yamlComment(p.filament) + " · " + yamlComment(p.tag) + " on " + yamlComment(p.name) + ", " + f(nozzle,2) + " mm nozzle.",
+    "# Everything not listed under values: is inherited from the system preset " + yamlComment(base) + ",",
+    "# as PrusaSlicer evaluates it for this printer and nozzle. The values below override it.",
+    "# Install: <PrusaSlicer user data>/presets/user/" + PRESET_REPO + "/" + PRESET_VENDOR + "/" + yamlComment(presetFileName(p)) + ", then restart PrusaSlicer.",
+    "kind: filament",
+    "id: " + yamlStr(id),
+    "name: " + yamlStr(name),
+    "inherits:",
+    "- " + yamlStr(base),
+  ];
+  if (cond) lines.push("condition: " + cond);
+  lines.push("values:");
+  for (const [k, v] of presetValues(p)) lines.push("  " + k + ": " + v);
+  lines.push("  filament_notes: " + yamlStr(notes.join(" ")));
+  return lines.join("\n") + "\n";
+}
+function downloadText(name, text){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type: "text/yaml" })); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
 // One entry per PrusaSlicer printer name: the file is keyed on that name, so two dial-ins on
 // the same printer cannot both be written. The active dial-in wins for its printer; for the
 // others the dial-in with the most steps done is the one worth applying.
@@ -1234,6 +1323,12 @@ async function helperAction(what, el){
     closeHelperPop();
     if (what === "install") { await api("/api/install", {}); toast("Bundle installed from this checkout"); }
     else if (what === "profile") { await api("/api/profile", { lua: profileLua() }); toast("profile.lua saved into the plugin"); }
+    else if (what === "preset") {
+      const p = printer();
+      const r = await api("/api/preset", { name: presetFileName(p), yaml: presetYaml(p) });
+      await api("/api/profile", { lua: profileLua() });
+      toast("Preset written: " + r.path + " (restart PrusaSlicer)");
+    }
     else if (what === "launch") { await api("/api/launch", {}); toast("PrusaSlicer launched"); }
     render();
   } catch (e) { toast(e.message); render(); }
@@ -1384,7 +1479,9 @@ $("#exportCopy").addEventListener("click", () => {
   if (navigator.clipboard) navigator.clipboard.writeText(ta.value).then(done, () => { document.execCommand("copy"); done(); });
   else { document.execCommand("copy"); done(); }
 });
-$("#exportWrite").addEventListener("click", async () => { await helperAction("profile"); closeDialog($("#exportDialog")); });
+$("#exportWrite").addEventListener("click", async () => { await helperAction("preset"); closeDialog($("#exportDialog")); });
+$("#exportDownload").addEventListener("click", () => { const p = printer(); downloadText(presetFileName(p), presetYaml(p)); });
+$("#exportBase").addEventListener("input", e => { const p = printer(); p.baseFilament = e.target.value; save(); $("#exportText").value = presetYaml(p); });
 $("#exportClose").addEventListener("click", () => closeDialog($("#exportDialog")));
 $("#pathsClose").addEventListener("click", () => closeDialog($("#pathsDialog")));
 $("#pathsSave").addEventListener("click", async () => {

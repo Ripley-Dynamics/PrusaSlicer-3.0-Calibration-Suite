@@ -368,83 +368,42 @@ end)
 
 print("Commands")
 test("0 nozzle clean before testing", function()
+    local function file_exists(rel)
+        local f = io.open(bundle_dir .. "/" .. rel, "rb")
+        if f then f:close() end
+        return f ~= nil
+    end
     local mock = run_command(cmd("00_nozzle_clean"))
-    local obj = generic_checks(mock)
-    check(obj.mesh.dims.max_x == 20 and obj.mesh.dims.max_y == 20 and near(obj.mesh.dims.max_z, 1), "20 x 20 x 1 mm anchor plate")
-    check(obj.object_params.fill_density == "100%", "solid plate")
-    check(#mock.bed.gcodes == 1 and near(mock.bed.gcodes[1].z, 0.1), "one entry on the plate's first layer")
-    local lines = {}
-    for l in mock.bed.gcodes[1].gcode:gmatch("[^\n]+") do lines[#lines + 1] = l end
-    local at, purges, messages = {}, 0, 0
-    for i, l in ipairs(lines) do
-        local function mark(key)
-            at[key] = at[key] or {}
-            at[key][#at[key] + 1] = i
-        end
-        if l:match("^M600") then mark("change") end
-        if l:match("^M601") then mark("pause") end
-        if l:match("^M109 R130") then mark("cool") end
-        if l:match("^M109 S270") then mark("hot") end
-        if l:match("^M109 S250") then mark("reload") end
-        if l:match("^G1 E20 F150") then purges = purges + 1 end
-        if l:match("^M117 ") then messages = messages + 1 end
-    end
-    check(at.change and #at.change == 2, "M600 twice: cleaning filament in, test filament back")
-    check(at.pause and #at.pause == 1, "exactly one pause (M601 on Prusa)")
-    check(at.hot and at.hot[1] < at.change[1], "heats to the purge temperature before the first filament change")
-    check(at.cool and at.cool[1] < at.pause[1] and at.pause[1] < at.change[2], "the pause sits between the cooldown and the second filament change")
-    check(at.reload and #at.reload == 1 and at.reload[1] > at.pause[1], "reload temperature 250 comes from the material preset, after the pull")
-    check(purges == 7, "100 mm in five 20 mm chunks plus two for the 40 mm reload purge, got " .. purges)
-    check(messages == 6, "six M117 messages: start, insert cleaner, cooling, pull, load test filament, purging; got " .. messages)
-    for _, l in ipairs(lines) do check(l:find(";", 1, true), "every line carries a comment: " .. l) end
-    check(lines[#lines]:find("nozzle clean done", 1, true), "ends with the done comment")
+    check(#mock.objects == 0 and #mock.bed.gcodes == 0 and mock.bed.cleared == 0, "adds nothing to the plate and leaves the project's custom G-code alone")
     local d = parse_data(data_line(mock))
-    check(d.step == "clean" and d.clean_temp == 270 and d.pull_temp == 130 and d.reload_temp == 250 and d.purge_mm == 100 and d.firmware == "prusa", "DATA")
-    check(d.material == "nylon" and d.cleaning_filament == "nylon", "nylon by default, purge 270 and cold pull 130")
-    local note = false
-    for _, l in ipairs(mock.prints) do if l:find("Cold Pull", 1, true) then note = true end end
-    check(note, "logs the CORE One Control > Cold Pull note")
-    -- firmware variants
-    local klipper = run_command(cmd("00_nozzle_clean"), { firmware = "klipper" }).bed.gcodes[1].gcode
-    check(klipper:find("TEMPERATURE_WAIT SENSOR=extruder MAXIMUM=130", 1, true) and klipper:find("PAUSE ; pause", 1, true)
-        and not klipper:find("M109 R", 1, true), "klipper waits for cooling and pauses with PAUSE")
-    local marlin = run_command(cmd("00_nozzle_clean"), { firmware = "marlin" }).bed.gcodes[1].gcode
-    check(marlin:find("M0 Pull the filament out firmly, then resume ;", 1, true) and marlin:find("M109 R130", 1, true), "marlin pauses with M0 plus the message")
-    local reprap = run_command(cmd("00_nozzle_clean"), { firmware = "reprap" }).bed.gcodes[1].gcode
-    check(reprap:find("M226 ; pause", 1, true), "reprap pauses with M226")
-    -- purge chunking
-    local short_purge = run_command(cmd("00_nozzle_clean"), { purge_mm = 50 }).bed.gcodes[1].gcode
-    local chunks, tail = 0, false
-    for l in short_purge:gmatch("[^\n]+") do
-        if l:match("^G1 E20 F150") then chunks = chunks + 1 end
-        if l:match("^G1 E10 F150") then tail = true end
+    check(d.step == "clean" and d.method == "usb" and d.routine == "cold_pull_nylon" and d.high_flow == "false", "DATA routine")
+    check(d.printer_model == "MK4S" and d.file == "assets/nozzle/MK4S/MK4S_01_cold_pull_nylon_STD.bgcode", "MK4S standard nozzle file: " .. tostring(d.file))
+    check(d.plain == "assets/nozzle/MK4S/MK4S_01_cold_pull_nylon_STD.gcode", "plain G-code twin")
+    check(file_exists(d.file) and file_exists(d.plain), "both files ship in the bundle")
+    check(table.concat(mock.prints or {}, "\n"):find("MK4S_01_cold_pull_nylon_STD.bgcode", 1, true), "log names the file")
+
+    local hf = parse_data(data_line(run_command(cmd("00_nozzle_clean"), { high_flow = true, routine = "hot_flush" })))
+    check(hf.file == "assets/nozzle/MK4S/MK4S_03_hot_flush_HF.bgcode" and file_exists(hf.file), "High Flow variant of another MK4S routine")
+    local brush = parse_data(data_line(run_command(cmd("00_nozzle_clean"), { high_flow = true, routine = "nozzle_brush" })))
+    check(brush.file == "assets/nozzle/MK4S/MK4S_05_nozzle_brush.bgcode" and file_exists(brush.file), "routines without a nozzle variant ignore the High Flow switch")
+
+    local c1 = parse_data(data_line(run_command(cmd("00_nozzle_clean"), nil, { printer_name = "Original Prusa CORE One+ 0.4 nozzle" })))
+    check(c1.printer_model == "COREONE" and c1.file == "assets/nozzle/COREONE/COREONE_01_cold_pull_nylon_STD.bgcode" and file_exists(c1.file), "CORE One+ uses the CORE One file")
+    local cl = parse_data(data_line(run_command(cmd("00_nozzle_clean"), { high_flow = true }, { printer_name = "Original Prusa CORE One L+ HF0.4 nozzle" })))
+    check(cl.printer_model == "COREONEL" and cl.file == "assets/nozzle/COREONEL/COREONEL_01_cold_pull_nylon_HF.bgcode" and file_exists(cl.file), "CORE One L+ is not mistaken for the CORE One")
+
+    -- every file the command can name exists
+    for _, folder in ipairs({ "MK4S", "COREONE", "COREONEL" }) do
+        for _, ext in ipairs({ ".bgcode", ".gcode" }) do
+            for _, nz in ipairs({ "STD", "HF" }) do
+                check(file_exists("assets/nozzle/" .. folder .. "/" .. folder .. "_01_cold_pull_nylon_" .. nz .. ext), folder .. " cold pull " .. nz .. ext)
+            end
+        end
     end
-    check(chunks == 4 and tail, "50 mm purges as 20 + 20 + 10, plus two 20 mm reload chunks: " .. chunks)
-    -- the cleaning material chooses the temperatures
-    local pla = run_command(cmd("00_nozzle_clean"), { cleaning_filament = "PLA" })
-    local pg = pla.bed.gcodes[1].gcode
-    check(pg:find("M109 S270", 1, true) and pg:find("M109 R100", 1, true), "PLA purges at 270 and is pulled at 100")
-    check(pg:find("M117 Insert PLA when asked", 1, true) and pg:find("M117 Cooling for the PLA cold pull", 1, true), "the messages name the material")
-    local dp = parse_data(data_line(pla))
-    check(dp.material == "pla" and dp.cleaning_filament == "PLA" and dp.clean_temp == 270 and dp.pull_temp == 100, "PLA DATA")
-    check(parse_data(data_line(run_command(cmd("00_nozzle_clean"), { cleaning_filament = "  pla " }))).pull_temp == 100, "the material name is case-insensitive")
-    -- any other word is a free name and gets nylon's temperatures
-    local other = run_command(cmd("00_nozzle_clean"), { cleaning_filament = "eSun cleaning" })
-    local dother = parse_data(data_line(other))
-    check(dother.material == "esun cleaning" and dother.cleaning_filament == "eSun cleaning" and dother.pull_temp == 130, "a free name uses the nylon defaults")
-    check(other.bed.gcodes[1].gcode:find("M117 Insert eSun cleaning when asked", 1, true), "and is named in the prompts")
-    local noted = false
-    for _, l in ipairs(other.prints) do if l:find("not one of nylon or pla", 1, true) then noted = true end end
-    check(noted, "logs that the nylon temperatures are used")
-    -- a typed temperature overrides the material's default
-    local over = run_command(cmd("00_nozzle_clean"), { clean_temp = 285, pull_temp = 120 })
-    local dov = parse_data(data_line(over))
-    check(dov.clean_temp == 285 and dov.pull_temp == 120, "non-zero values override the material defaults")
-    check(over.bed.gcodes[1].gcode:find("M109 S285", 1, true) and over.bed.gcodes[1].gcode:find("M109 R120", 1, true), "and reach the G-code")
-    must_fail(cmd("00_nozzle_clean"), { clean_temp = 320 }, "between 150 and 300")
-    must_fail(cmd("00_nozzle_clean"), { pull_temp = 40 }, "between 60 and 160")
-    must_fail(cmd("00_nozzle_clean"), { purge_mm = 5 }, "between 20 and 300")
-    must_fail(cmd("00_nozzle_clean"), { firmware = "duet" }, "Firmware must be")
+    must_fail(cmd("00_nozzle_clean"), { routine = "hot_flush" }, "exists only for the MK4S", { printer_name = "Original Prusa CORE One" })
+    must_fail(cmd("00_nozzle_clean"), { routine = "acid_bath" }, "Routine must be one of")
+    must_fail(cmd("00_nozzle_clean"), nil, "No nozzle maintenance file", { printer_name = "Original Prusa XL 0.4 nozzle" })
+    must_fail(cmd("00_nozzle_clean"), nil, "No nozzle maintenance file", { printer_name = "Original Prusa MINI+" })
 end)
 
 test("1 temperature tower on Prusa's model", function()
@@ -460,7 +419,7 @@ test("1 temperature tower on Prusa's model", function()
     for _, t in ipairs({ "260", "255", "250", "245", "240", "235" }) do check(has_text(obj, t), "label " .. t) end
     for _, v in ipairs(volumes_of(obj, VT.Negative, "text")) do
         check(near(v.translate.y, -5 + 0.6), "labels sunk into the front face at y=-5")
-        check(v.translate.x == -16 or v.translate.x == 30, "labels in the flat zones")
+        check(v.translate.x == -16 or v.translate.x == 25, "labels in the flat zones (tag inside x = 20..30)")
     end
     check(has_text(obj, "MK4S 0.4"), "tag")
     check(obj.object_params.fill_density == "100%", "solid")
@@ -533,7 +492,22 @@ test("3 pressure advance line test", function()
     local mock2 = run_command(cmd("03a_pa_line"), { firmware = "klipper", bed_x = 100, bed_y = 100, min_pa = "0.02", max_pa = "0.06", interval = "0.02", retract = "0" }, { printer_name = "Voron 2.4" })
     local g2 = mock2.bed.gcodes[1].gcode
     check(g2:find("SET_PRESSURE_ADVANCE ADVANCE=0.04", 1, true) and g2:find("G0 X60 Y110 F9000", 1, true) and not g2:find("E0.8", 1, true), "klipper, explicit bed centre, no retract")
-    must_fail(cmd("03a_pa_line"), nil, "Bed centre unknown", { printer_name = "Voron 2.4" })
+    must_fail(cmd("03a_pa_line"), nil, "Bed size unknown", { printer_name = "Voron 2.4" })
+    must_fail(cmd("03a_pa_line"), nil, "Bed size unknown", { printer_name = "Original Prusa MINI+ 0.4 nozzle" })
+    must_fail(cmd("03a_pa_line"), nil, "Bed size unknown", { printer_name = "Original Prusa MK3S+ 0.4 nozzle" })
+    local xl = run_command(cmd("03a_pa_line"), nil, { printer_name = "Original Prusa XL 0.4 nozzle - 2 tools" })
+    check(parse_data(data_line(xl)).bed_x == 180 and xl.bed.gcodes[1].gcode:find("G0 X140 Y190 F9000", 1, true), "XL: 360 x 360 bed")
+    local xlp = parse_data(data_line(run_command(cmd("03a_pa_line"), nil, { printer_name = "Original Prusa XL+ 0.4 nozzle" })))
+    check(xlp.bed_x == 180 and xlp.bed_w == 360, "XL+ shares the XL bed")
+    local axl = parse_data(data_line(run_command(cmd("03a_pa_line"), nil, { printer_name = "Original Prusa CORE One L 0.4 nozzle" })))
+    check(axl.bed_x == 150 and axl.bed_y == 150 and axl.bed_w == 300, "CORE One L: 300 x 300 bed, not the CORE One's")
+    local c1 = parse_data(data_line(run_command(cmd("03a_pa_line"), nil, { printer_name = "Original Prusa CORE One+ (Gen 2) 0.4 nozzle" })))
+    check(c1.bed_x == 125 and c1.bed_y == 110 and c1.bed_d == 220, "CORE One+ (Gen 2): 250 x 220 bed")
+    check(parse_data(data_line(run_command(cmd("03a_pa_line"), nil, { printer_name = "My XL-ish printer" }))).bed_x == 180, "xl as a word matches")
+    must_fail(cmd("03a_pa_line"), nil, "Bed size unknown", { printer_name = "Original Prusa Excellent 0.4" })
+    must_fail(cmd("03a_pa_line"), { spacing = 7 }, "past the 220 mm bed", { printer_name = "Original Prusa CORE One" })
+    must_fail(cmd("03a_pa_line"), { spacing = 7 }, "past the 210 mm bed")
+    must_fail(cmd("03a_pa_line"), nil, "relative E", { relative_e = false })
     must_fail(cmd("03a_pa_line"), { spacing = 2 }, "Line spacing")
     must_fail(cmd("03a_pa_line"), { fast_speed = 10 }, "greater than slow")
 end)
@@ -817,6 +791,8 @@ test("13 apply results", function()
 end)
 
 test("tools: nozzle wipe", function()
+    must_fail(cmd("91_nozzle_wipe"), nil, "relative E", { relative_e = false })
+    check(run_command(cmd("91_nozzle_wipe"), { retract = "0" }, { relative_e = false }).bed.gcodes[1], "without a retract the wipe does not need relative E")
     local mock = run_command(cmd("91_nozzle_wipe"))
     check(#mock.objects == 0 and #mock.bed.gcodes == 50 and near(mock.bed.gcodes[1].z, 5.1), "50 wipes")
     local g = mock.bed.gcodes[1].gcode
@@ -876,7 +852,8 @@ end)
 
 test("every command tolerates a printer without nozzle feature", function()
     for _, f in ipairs(commands) do
-        local mock, _, err = run_command(f, f:find("pa_line", 1, true) and { bed_x = 100, bed_y = 100 } or nil, { no_nozzle = true, printer_name = "", modules = { profile = { ["unknown printer"] = { tag = "X", temperature = 240 } } } })
+        local mock, _, err = run_command(f, f:find("pa_line", 1, true) and { bed_x = 100, bed_y = 100 } or nil,
+            { no_nozzle = true, printer_name = f:find("nozzle_clean", 1, true) and "MK4S" or "", modules = { profile = { ["unknown printer"] = { tag = "X", temperature = 240 } } } })
         check(err == nil, f .. " failed: " .. tostring(err))
     end
 end)
