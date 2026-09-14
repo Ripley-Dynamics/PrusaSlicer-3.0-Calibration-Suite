@@ -45,6 +45,9 @@ function execute(opts)
 
     local bed = api.project:current_bed()
     local lh = util.layer_height(bed)
+    if retract > 0 then
+        util.require_relative_e(bed, "The nozzle wipe's retract")
+    end
 
     local axis = opts.along_y and "Y" or "X"
     local far = (opts.along_y and by or bx) + stroke

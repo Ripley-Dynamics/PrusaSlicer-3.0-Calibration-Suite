@@ -614,6 +614,8 @@ class Handler(BaseHTTPRequestHandler):
             self.wfile.write(body)
         elif self.path == "/api/status":
             self._json(h.status())
+        elif self.path.startswith("/assets/nozzle/"):
+            self._send_nozzle_file()
         elif self.path.startswith("/api/log"):
             since = 0
             m = re.search(r"since=(\d+)", self.path)
@@ -640,6 +642,36 @@ class Handler(BaseHTTPRequestHandler):
                 h.unsubscribe(q)
         else:
             self.send_error(404)
+
+    NOZZLE_PATH = re.compile(r"^/assets/nozzle/([A-Z0-9]{1,16})/([A-Za-z0-9_\-]{1,64}\.(bgcode|gcode))$")
+
+    def _send_nozzle_file(self):
+        """Serve one of the shipped nozzle maintenance files (step 0) so the
+        sheet can offer it as a download for the USB stick. Only names that
+        match the strict pattern are looked up, and only inside assets/nozzle of
+        this checkout's bundle or the installed copy."""
+        m = self.NOZZLE_PATH.match(self.path.split("?", 1)[0])
+        if not m:
+            self.send_error(404)
+            return
+        folder, name = m.group(1), m.group(2)
+        roots = [BUNDLE_SRC]
+        dst = self.helper.bundle_dst
+        if dst:
+            roots.append(dst)
+        for root in roots:
+            candidate = Path(root) / "assets" / "nozzle" / folder / name
+            if candidate.is_file():
+                body = candidate.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/octet-stream")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Content-Disposition", f'attachment; filename="{name}"')
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(body)
+                return
+        self.send_error(404, f"{folder}/{name} is not in the bundle")
 
     def _sse(self, ev):
         self.wfile.write(f"id: {ev['id']}\ndata: {json.dumps(ev)}\n\n".encode())

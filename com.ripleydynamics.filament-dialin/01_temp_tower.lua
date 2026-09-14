@@ -16,9 +16,11 @@ info = {
 
 -- Geometry comes from PrusaSlicer's own calibration plugin (assets/prusa):
 -- a 80 x 10 x 1 mm base and 80 x 10 x 10 mm steps with bridge and overhang
--- features. Each step is one temperature band. Labels sit in the flat zone
--- on the front face at x = -28..-6, the printer tag in the zone at x = 22..38.
-local LABEL_X, TAG_X = -16, 30
+-- features. Each step is one temperature band. Measured from the STL, the
+-- front face (y = -5) is flat at x = -25.72..-5.72 (labels) and x = 20..30
+-- (printer tag); the overhang cut-out starts at x = 30, so the tag is kept
+-- inside 20.5..29.5.
+local LABEL_X, TAG_X = -16, 25
 
 function execute(opts)
     local util = require("lib/util")
@@ -67,7 +69,7 @@ function execute(opts)
     end
     volumes[#volumes + 1] = label.front {
         text = tag, x = TAG_X, z = base_h + 4, face_y = front_y,
-        line_height = 3.5, max_width = 15, max_height = 6,
+        line_height = 3.5, max_width = 9, max_height = 6,
     }
 
     api.project:add_object {

@@ -41,7 +41,7 @@ filename or menu label, so every command's id starts with its step number
 
 | Menu entry | What it adds | What you read off it | What it feeds |
 | --- | --- | --- | --- |
-| 0. Nozzle clean before testing | Prusa's manual routine as first-layer G-code on a 20 mm anchor plate: heat, `M600` to swap to the cleaning material (nylon or PLA), purge it through, cool to that material's pull temperature, pause for the cold pull, `M600` back to the test filament, purge | The tip you pulled: a clean cast of the nozzle bore, no grit, flecks or crust | Nothing. It makes every step below measure the printer instead of the residue in it |
+| 0. Nozzle clean before testing | Nothing on the plate. Names the Prusa-firmware maintenance file shipped in `assets/nozzle/` for the selected printer (MK4S, CORE One / One+ / One+ (Gen 2), CORE One L / L+) and nozzle (standard or High Flow): a `.bgcode` run from the USB stick that homes, parks high, purges nylon at 290 °C, cools with the fan and does the extruder-driven cold pull at 145 °C with the printer's own prompts. The MK4S also gets a PLA cold pull, a hot flush, a flow test and a brush-park file. The sheet offers the files as downloads | The tip you pulled: a clean cast of the nozzle bore, no grit, flecks or crust | Nothing. It makes every step below measure the printer instead of the residue in it |
 | 1. Temperature tower | PrusaSlicer's own calibration model (80 × 10 mm base, 10 mm steps with bridges and overhangs), one `M104` per step, printed solid | Bridge sag, overhang fray, gloss, layer bonding | `temperature`, `first_layer_temperature` |
 | 2. Max volumetric flow | PrusaSlicer's single-wall comb with one speed modifier per band, plus a solid label column; or a solid block | Highest band with no gaps, roughness or extruder clicking | `filament_max_volumetric_speed` |
 | 3. Pressure advance › Line test (recommended) | OrcaSlicer's PA Line as first-layer G-code on a small anchor plate: one line per value (slow, fast, slow runs), the value written beside it in extruded digits, `M572` / `M900` / Klipper's command per line | The line whose fast run is as wide as its slow ends | `pressure_advance_value`, mode `enabled` |
@@ -109,8 +109,12 @@ earlier steps.
    (minutes, first layer only); the tower is there for a closer look at
    corners. PrusaSlicer 3.0 stores PA in the filament preset (mode plus
    value); Prusa firmware can also self-calibrate it, and the line test
-   checks that result. The line test needs the bed centre, taken from the
-   printer name for Prusa machines or typed in, and relative extrusion.
+   checks that result. The line test needs the bed size, known for the
+   XL / XL+ (360 × 360), CORE One / One+ / One+ (Gen 2) (250 × 220),
+   CORE One L / L+ (300 × 300) and MK4S (250 × 210) from the printer name
+   and typed in as the bed centre for anything else; it refuses a pattern
+   that would run off the bed, and it refuses a printer profile that does
+   not use relative E distances (the pattern's E values are relative moves).
 4. **Flow**, at the chosen temperature, limit and PA. Orca's recommended
    sweep is one pass from -5 to +5% in 1% steps; halve the step for a closer
    look, or use the legacy two passes (-20 to +20 by 5, then 0 to -9 by 1)
@@ -219,8 +223,9 @@ print profile, starting from the stock Prusament PETG profile. The sheet
 (`wizard/index.html`) walks through it and does the arithmetic; the short
 form:
 
-0. **Nozzle clean**: nylon (or PLA) at the material's own temperatures, once
-   per printer, before anything else is printed.
+0. **Nozzle clean**: run the printer's nylon cold-pull file from the USB
+   stick (step 0 names it; the sheet downloads it), once per printer, before
+   anything else is printed.
 1. **Temperature tower**: 260 down to 235 °C in 5 °C bands. Choose the
    coolest clean band. Apply it (step 13 or the profile).
 2. **Max volumetric flow** on the comb, 6 to 24 mm³/s. Limit = 85% of the

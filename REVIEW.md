@@ -7,7 +7,40 @@ per finding: **confirmed** (reproduced or read directly in the code),
 **confirmed, revised** (real, but the severity or a detail changed on
 verification), or **rejected**.
 
-Test suite: `./run-tests.sh` on Lua 5.4.6 passes 26/26.
+Test suite: `./run-tests.sh` on Lua 5.4.6 passes 26/26 (at the reviewed commit; the
+follow-up commit below keeps it at 26/26 with the rewritten step 0 and the new
+bed, relative-E and file checks).
+
+## Follow-up commit (same day)
+
+Decisions from the maintainer, and what changed:
+
+- **1** explained below; unchanged for now (fix direction stands).
+- **2** accepted as is for now.
+- **3** explained below; unchanged.
+- **4 done.** Step 0 no longer writes a purge into a sliced print. The bundle
+  ships the Prusa-firmware maintenance files (`assets/nozzle/<PRINTER>/`,
+  `.bgcode` plus plain `.gcode`) for the MK4S, CORE One / One+ / One+ (Gen 2)
+  and CORE One L / L+; the command names the file for the selected printer and
+  nozzle (standard or High Flow), the helper serves it at
+  `/assets/nozzle/...` and the sheet offers the downloads. Generator source is
+  in `tools/nozzle-suite/`.
+- **5** explained below; unchanged (fix direction stands).
+- **6 done.** `util.require_relative_e` reads `use_relative_e_distances` from
+  the printer preset; the PA line test and the nozzle wipe's retract refuse an
+  absolute-E profile and warn when the value cannot be read.
+- **7** explained below; unchanged.
+- **8** by design (100% infill suite); a selectable test infill is planned.
+- **9 done.** Tag moved to x = 25, max width 9 mm, inside the measured flat
+  face (x 20..30); comment corrected.
+- **10 done.** The PA line's bed table now holds only XL / XL+ (360 × 360),
+  CORE One / One+ / One+ (Gen 2) (250 × 220), CORE One L / L+ (300 × 300) and
+  MK4S (250 × 210), matched longest-name-first with `xl` as a whole word, and
+  the command refuses a pattern that would run off the bed. Any other printer
+  types its bed centre.
+- **11** explained below; unchanged.
+- **12 done.** Every `id` interpolated into an HTML attribute in the sheet now
+  goes through `esc()`.
 
 ## Critical and high
 
