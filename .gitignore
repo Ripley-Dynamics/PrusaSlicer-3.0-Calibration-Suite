@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 .DS_Store
 *.tmp
+# generated 2.9 projects
+*.3mf

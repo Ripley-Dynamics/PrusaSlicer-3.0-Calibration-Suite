@@ -468,6 +468,13 @@ The sheet repeats this reminder on each step.
   what was really applied. `PrusaSlicer --export-config-schema schema.json`
   lists every key and type for your build.
 
+## PrusaSlicer 2.9.x (no plugins): `port29/`
+
+For machines still on PrusaSlicer 2.9.x the same test prints are generated
+as ready-to-slice 3MF projects by `python3 -m port29 <step>`; see
+[`port29/README.md`](port29/README.md). Step 5 (the slab) and the 3MF writer
+are done; the other steps follow the same pattern.
+
 ## Development and tests
 
 ```

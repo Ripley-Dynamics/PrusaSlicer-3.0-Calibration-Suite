@@ -7,4 +7,5 @@ BUNDLE=com.ripleydynamics.filament-dialin
 for f in $(find "$BUNDLE" -name '*.lua' | sort); do
     "$LUA" -e "assert(loadfile('$f'))" || { echo "syntax error in $f"; exit 1; }
 done
+python3 -m unittest discover -s test -p 'test_*.py' || exit 1
 exec "$LUA" test/run_tests.lua "$BUNDLE" $(find "$BUNDLE" -name '*.lua' | sort)
