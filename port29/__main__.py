@@ -3,7 +3,7 @@
 import argparse
 import sys
 
-from . import slab
+from . import preset29, slab
 from .common import parse_bed
 
 
@@ -16,6 +16,7 @@ def main(argv=None):
                         help="bed size WxD in mm, the object is centred on it (default 250x210, MK4S; CORE One 250x220; CORE One L 300x300; XL 360x360)")
     sub = ap.add_subparsers(dest="step", required=True)
     slab.add_cli(sub, common)
+    preset29.add_cli(sub, common)
     args = ap.parse_args(argv)
     args.run(args)
     return 0
