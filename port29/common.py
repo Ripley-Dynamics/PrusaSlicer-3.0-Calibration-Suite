@@ -143,3 +143,10 @@ def join(values, decimals=2):
 
 
 SOLID_PARAMS = {"fill_density": "100%", "fill_pattern": "rectilinear"}
+
+
+def centre_on_bed(obj, bed):
+    """Place an Object3mf so its XY bounding-box centre lands on the bed centre."""
+    b = obj.bounds()
+    obj.position = (bed[0] / 2 - (b[0] + b[3]) / 2, bed[1] / 2 - (b[1] + b[4]) / 2)
+    return obj
