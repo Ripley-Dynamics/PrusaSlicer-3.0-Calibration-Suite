@@ -50,6 +50,7 @@ class Primitives(unittest.TestCase):
         self.assertTrue(g.cone(5, 10, 256).is_closed())
         self.assertAlmostEqual(g.cone(5, 10, 256).signed_volume(), math.pi * 25 * 10 / 3, delta=0.5)
         self.check_solid(g.pyramid(6, 9), 6 * 6 * 9 / 3)
+        self.assertEqual(g.pyramid(6, 9).bounds(), (-3, -3, 0, 3, 3, 9))
 
     def test_transforms(self):
         m = g.box(1, 2, 3).rotate_x(90)

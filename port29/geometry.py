@@ -62,9 +62,11 @@ def cone(r, h, n=64):
 
 
 def pyramid(base, h):
-    """Square pyramid, base `base` x `base` with a corner at the origin."""
+    """Square pyramid, base `base` x `base` centred on the origin in X/Y, base
+    at z = 0 (api.make_pyramid)."""
+    r = base / 2
     m = Mesh()
-    m.vertices = [[0, 0, 0], [base, 0, 0], [base, base, 0], [0, base, 0], [base / 2, base / 2, h]]
+    m.vertices = [[-r, -r, 0], [r, -r, 0], [r, r, 0], [-r, r, 0], [0, 0, h]]
     m.triangles = [(0, 2, 1), (0, 3, 2), (0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)]
     return m
 
