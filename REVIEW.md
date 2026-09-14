@@ -15,7 +15,10 @@ bed, relative-E and file checks).
 
 Decisions from the maintainer, and what changed:
 
-- **1** explained below; unchanged for now (fix direction stands).
+- **1 done.** Every request to the helper must carry the loopback `Host` it
+  was started on; every POST must carry the sheet's own `Origin` (and, when
+  the browser sends it, a same-origin `Sec-Fetch-Site`). The sheet uses
+  relative URLs so nothing there changed; foreign pages get 403.
 - **2** accepted as is for now.
 - **3** explained below; unchanged.
 - **4 done.** Step 0 no longer writes a purge into a sliced print. The bundle
@@ -25,7 +28,12 @@ Decisions from the maintainer, and what changed:
   nozzle (standard or High Flow), the helper serves it at
   `/assets/nozzle/...` and the sheet offers the downloads. Generator source is
   in `tools/nozzle-suite/`.
-- **5** explained below; unchanged (fix direction stands).
+- **5 done.** `util.try_set` probes the key first and reports "NOT written"
+  for a key the preset does not have, and reads enums back as strings so a
+  rejected value (`pressure_advance = enbaled`) is reported instead of
+  counted. Separately, the sheet's Save preset now produces a complete
+  PrusaSlicer 3.0 filament preset (YAML user preset inheriting the system
+  preset) and the helper writes it into PrusaSlicer's user presets folder.
 - **6 done.** `util.require_relative_e` reads `use_relative_e_distances` from
   the printer preset; the PA line test and the nozzle wipe's retract refuse an
   absolute-E profile and warn when the value cannot be read.
